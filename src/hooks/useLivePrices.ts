@@ -5,7 +5,7 @@ interface PriceData {
   price: number;
   bid: number;
   ask: number;
-  change: number;
+  change: number | null;
 }
 
 interface PricesResponse {
