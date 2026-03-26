@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getInstrument } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
-import { calcLecap, calcBoncer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
+import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
 import { ArrowLeft } from 'lucide-react';
 
 export default function InstrumentDetail() {
@@ -11,27 +11,40 @@ export default function InstrumentDetail() {
   const instrument = getInstrument(ticker || '');
   const { data: livePrices } = useLivePrices();
 
-  const livePrice = livePrices?.prices[ticker || '']?.price;
-  const liveChange = livePrices?.prices[ticker || '']?.change;
-  const currentMarketPrice = livePrice ?? instrument?.marketPrice ?? 0;
+  const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
+  const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
 
   const [manualPrice, setManualPrice] = useState('');
+  const [tPlus, setTPlus] = useState('1');
   const [commission, setCommission] = useState('0');
+  const [manualCER, setManualCER] = useState('');
 
-  const activePrice = manualPrice ? parseFloat(manualPrice) : currentMarketPrice;
-  const lastCER = 720; // TODO: fetch from external source
+  const activePrice = manualPrice ? parseFloat(manualPrice) : livePrice;
+  const activeTPlus = parseInt(tPlus) || 1;
+  const activeCommission = parseFloat(commission) || 0;
+  const activeCER = manualCER ? parseFloat(manualCER) : 0;
+
+  const isCER = instrument?.type === 'CER';
 
   const result = useMemo(() => {
     if (!instrument || activePrice <= 0) return null;
-    const comm = parseFloat(commission) || 0;
-    if (instrument.type === 'LECAP' && instrument.payment) {
-      return { type: 'LECAP' as const, ...calcLecap(activePrice, instrument.maturityDate, instrument.payment, comm) };
+
+    if (instrument.type === 'LECAP' && instrument.redemptionValue) {
+      return {
+        type: 'LECAP' as const,
+        ...calcLecap(activePrice, instrument.maturityDate, instrument.redemptionValue, activeTPlus, activeCommission)!,
+      };
     }
-    if (instrument.type === 'BONCER' && instrument.cerInicial) {
-      return { type: 'BONCER' as const, ...calcBoncer(activePrice, instrument.maturityDate, instrument.cerInicial, lastCER, comm) };
+
+    if (instrument.type === 'CER' && instrument.cerInicial && activeCER > 0) {
+      return {
+        type: 'CER' as const,
+        ...calcCer(activePrice, instrument.maturityDate, instrument.cerInicial, activeCER, activeTPlus, activeCommission)!,
+      };
     }
+
     return null;
-  }, [instrument, activePrice, commission, lastCER]);
+  }, [instrument, activePrice, activeTPlus, activeCommission, activeCER]);
 
   if (!instrument) {
     return (
@@ -41,70 +54,113 @@ export default function InstrumentDetail() {
     );
   }
 
+  const days = daysUntil(instrument.maturityDate, activeTPlus);
+
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-card px-4 md:px-8 py-3">
+      <header className="border-b border-border bg-card px-4 md:px-8 py-4 flex items-center justify-between">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-xs font-mono">Volver</span>
+          <span className="text-sm">Volver</span>
         </button>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
+          <span>Precio: data912</span>
+          {isCER && <span>· CER: manual</span>}
+        </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 md:p-6">
-        {/* Header card */}
-        <div className="terminal-card p-5 mb-4">
-          <div className="flex items-start justify-between mb-4">
+      <main className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
+        {/* Instrument Info */}
+        <div className="terminal-card p-5">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <h1 className="text-xl font-bold font-mono">{instrument.ticker}</h1>
-              <p className="text-muted-foreground text-xs mt-0.5">{instrument.name}</p>
+              <h1 className="text-2xl font-bold font-mono text-accent">{instrument.ticker}</h1>
+              <p className="text-muted-foreground text-sm mt-1">{instrument.name}</p>
             </div>
-            <span className="px-2.5 py-1 rounded text-[10px] font-mono font-semibold uppercase bg-secondary text-secondary-foreground">
+            <span className="px-3 py-1.5 rounded-md text-xs font-semibold bg-secondary text-secondary-foreground">
               {instrument.type}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <InfoCell label="Vencimiento" value={formatDate(instrument.maturityDate)} />
-            <InfoCell label="Días" value={String(daysUntil(instrument.maturityDate))} />
-            <InfoCell label="Precio" value={currentMarketPrice > 0 ? `$${currentMarketPrice.toFixed(2)}` : '...'} />
-            {instrument.type === 'LECAP' && instrument.payment && (
-              <InfoCell label="Pago al vto" value={`$${instrument.payment.toFixed(3)}`} />
+            <InfoCell label="Días al vto" value={String(days)} />
+            <InfoCell label="Duration" value={`${(days / 365).toFixed(2)}y`} />
+            <InfoCell
+              label="Precio mercado"
+              value={livePrice > 0 ? `$${livePrice.toFixed(2)}` : 'Sin datos'}
+            />
+            {instrument.type === 'LECAP' && instrument.redemptionValue && (
+              <InfoCell label="Pago al vto" value={`$${instrument.redemptionValue.toFixed(3)}`} />
+            )}
+            {isCER && instrument.cerInicial && (
+              <InfoCell label="CER inicial" value={instrument.cerInicial.toFixed(4)} />
             )}
             <div>
-              <span className="text-muted-foreground block mb-0.5 font-mono uppercase tracking-wider text-[10px]">Var %</span>
-              <span className={`font-mono font-semibold ${
+              <span className="text-muted-foreground block mb-1 text-[10px] font-mono uppercase tracking-wider">Var %</span>
+              <span className={`font-mono font-semibold text-sm ${
                 liveChange != null && liveChange > 0 ? 'price-positive' :
                 liveChange != null && liveChange < 0 ? 'price-negative' : 'text-muted-foreground'
               }`}>
                 {liveChange != null ? formatPercent(liveChange) : '—'}
               </span>
             </div>
+            {livePrices?.timestamp && (
+              <InfoCell
+                label="Última actualización"
+                value={new Date(livePrices.timestamp).toLocaleString('es-AR', {
+                  hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
+                })}
+              />
+            )}
           </div>
         </div>
 
-        {/* Calculator */}
-        <div className="terminal-card p-5 mb-4">
-          <h2 className="text-sm font-semibold font-mono mb-4 uppercase tracking-wider">Calculadora</h2>
+        {/* Calculator Inputs */}
+        <div className="terminal-card p-5">
+          <h2 className="text-sm font-semibold mb-4 uppercase tracking-wider text-muted-foreground">
+            Calculadora
+          </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
             <div>
-              <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1">
+              <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1.5">
                 Precio manual
               </label>
               <input
                 type="number"
                 value={manualPrice}
                 onChange={(e) => setManualPrice(e.target.value)}
-                placeholder={currentMarketPrice > 0 ? currentMarketPrice.toFixed(2) : '0.00'}
-                className="w-full bg-muted border border-border rounded px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder={livePrice > 0 ? livePrice.toFixed(2) : '0.00'}
+                className="input-field"
+                step="0.01"
+              />
+              <span className="text-[9px] text-muted-foreground mt-1 block">
+                {manualPrice ? 'Usando precio manual' : 'Usando precio de mercado'}
+              </span>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1.5">
+                T+
+              </label>
+              <input
+                type="number"
+                value={tPlus}
+                onChange={(e) => setTPlus(e.target.value)}
+                placeholder="1"
+                min="0"
+                max="5"
+                className="input-field"
               />
             </div>
+
             <div>
-              <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1">
-                Comisión (TNA)
+              <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1.5">
+                Comisión (TNA %)
               </label>
               <input
                 type="number"
@@ -112,26 +168,63 @@ export default function InstrumentDetail() {
                 onChange={(e) => setCommission(e.target.value)}
                 placeholder="0"
                 step="0.1"
-                className="w-full bg-muted border border-border rounded px-3 py-2 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                className="input-field"
               />
             </div>
+
+            {isCER && (
+              <div>
+                <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1.5">
+                  CER usado
+                </label>
+                <input
+                  type="number"
+                  value={manualCER}
+                  onChange={(e) => setManualCER(e.target.value)}
+                  placeholder="Ej: 716.45"
+                  step="0.0001"
+                  className="input-field"
+                />
+                <span className="text-[9px] text-muted-foreground mt-1 block">
+                  CER inicial: {instrument.cerInicial?.toFixed(4)}
+                </span>
+              </div>
+            )}
           </div>
 
+          {/* Error state */}
+          {activePrice <= 0 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-md px-4 py-3 text-xs text-destructive">
+              Ingresá un precio válido para calcular las métricas.
+            </div>
+          )}
+
+          {isCER && activeCER <= 0 && activePrice > 0 && (
+            <div className="bg-primary/10 border border-primary/30 rounded-md px-4 py-3 text-xs text-primary">
+              Ingresá el valor de CER actual para calcular las métricas CER.
+            </div>
+          )}
+
+          {/* Results */}
           {result && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-5">
               {result.type === 'LECAP' ? (
                 <>
-                  <MetricCard label="TNA" value={formatPercent(result.tna)} />
+                  <MetricCard label="TNA" value={formatPercent(result.tna)} highlight />
+                  <MetricCard label="TEA / TIR" value={formatPercent(result.tea)} />
                   <MetricCard label="TEM" value={formatPercent(result.tem)} />
-                  <MetricCard label="TEA" value={formatPercent(result.tea)} />
-                  <MetricCard label="Retorno" value={formatPercent(result.totalReturn)} />
+                  <MetricCard label="Retorno total" value={formatPercent(result.totalReturn)} />
+                  <MetricCard label="Días al vto" value={String(result.days)} />
+                  <MetricCard label="Duration" value={`${result.duration.toFixed(2)}y`} />
                 </>
               ) : (
                 <>
-                  <MetricCard label="TNA 180/360" value={formatPercent(result.tna180)} />
-                  <MetricCard label="TIR" value={formatPercent(result.tir)} />
+                  <MetricCard label="TNA (180/360)" value={formatPercent(result.tna180)} highlight />
+                  <MetricCard label="TIR Real" value={formatPercent(result.tir)} />
+                  <MetricCard label="CER usado" value={activeCER.toFixed(4)} />
+                  <MetricCard label="CER inicial" value={instrument.cerInicial?.toFixed(4) ?? '--'} />
+                  <MetricCard label="Días al vto" value={String(result.days)} />
                   <MetricCard label="Duration" value={`${result.duration.toFixed(2)}y`} />
-                  <MetricCard label="Retorno" value={formatPercent(result.totalReturn)} />
                 </>
               )}
             </div>
@@ -145,17 +238,17 @@ export default function InstrumentDetail() {
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="text-muted-foreground block mb-0.5 font-mono uppercase tracking-wider text-[10px]">{label}</span>
+      <span className="text-muted-foreground block mb-1 text-[10px] font-mono uppercase tracking-wider">{label}</span>
       <span className="font-mono text-sm font-medium">{value}</span>
     </div>
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="bg-muted rounded p-3 text-center">
-      <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider block mb-1">{label}</span>
-      <span className="text-base font-mono font-bold">{value}</span>
+    <div className={`metric-card ${highlight ? 'border border-accent/30' : ''}`}>
+      <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider block mb-1.5">{label}</span>
+      <span className={`text-lg font-mono font-bold ${highlight ? 'text-accent' : ''}`}>{value}</span>
     </div>
   );
 }

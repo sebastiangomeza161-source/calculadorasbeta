@@ -1,11 +1,17 @@
 /**
- * Settlement = T+1 business day (simplified: skip weekends)
+ * Financial calculations based on Excel: Calculadora_TF_y_CER
+ * 
+ * LECAP: zero-coupon fixed rate (known payment at maturity)
+ * CER: inflation-linked (adjusted face via CER ratio)
  */
-export function getSettlementDate(): Date {
+
+// --- Settlement ---
+
+export function getSettlementDate(tPlus: number = 1): Date {
   const today = new Date();
   const settlement = new Date(today);
   let added = 0;
-  while (added < 1) {
+  while (added < tPlus) {
     settlement.setDate(settlement.getDate() + 1);
     const dow = settlement.getDay();
     if (dow !== 0 && dow !== 6) added++;
@@ -13,89 +19,15 @@ export function getSettlementDate(): Date {
   return settlement;
 }
 
-export function daysUntil(dateStr: string): number {
-  const target = new Date(dateStr);
-  const settlement = getSettlementDate();
+export function daysUntil(maturityDate: string, tPlus: number = 1): number {
+  const target = new Date(maturityDate);
+  const settlement = getSettlementDate(tPlus);
   const diff = target.getTime() - settlement.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-/**
- * LECAP calculation — matches Excel formulas:
- *   TotalReturn = payment / price - 1
- *   TNA = totalReturn * 365 / days
- *   TEA = (payment / price) ^ (365 / days) - 1
- *   TEM = (TEA + 1) ^ (30/365) - 1
- */
-export function calcLecap(
-  price: number,
-  maturityDate: string,
-  payment: number,
-  commission: number = 0
-): { tna: number; tem: number; tea: number; totalReturn: number } {
-  const days = daysUntil(maturityDate);
-  if (days <= 0 || price <= 0 || payment <= 0) return { tna: 0, tem: 0, tea: 0, totalReturn: 0 };
+// --- DAYS360 (US/NASD method) ---
 
-  const effectivePrice = commission > 0
-    ? payment / (1 + ((calcTnaRaw(price, payment, days) - commission / 100) * days / 365))
-    : price;
-
-  const totalReturn = (payment / effectivePrice) - 1;
-  const tna = totalReturn * 365 / days;
-  const tea = Math.pow(payment / effectivePrice, 365 / days) - 1;
-  const tem = Math.pow(1 + tea, 30 / 365) - 1;
-
-  return {
-    tna: tna * 100,
-    tem: tem * 100,
-    tea: tea * 100,
-    totalReturn: totalReturn * 100,
-  };
-}
-
-function calcTnaRaw(price: number, payment: number, days: number): number {
-  return (payment / price - 1) * 365 / days;
-}
-
-/**
- * BONCER calculation — matches Excel formulas:
- *   adjustedFace = 100 * lastCER / cerInicial
- *   TNA (180/360) = (POWER(adjustedFace/price, 180/days360) - 1) * 2
- *   TIR/TEA = POWER(adjustedFace/price, 365/days) - 1
- */
-export function calcBoncer(
-  price: number,
-  maturityDate: string,
-  cerInicial: number,
-  lastCER: number,
-  commission: number = 0
-): { tna180: number; tir: number; duration: number; totalReturn: number } {
-  const days = daysUntil(maturityDate);
-  if (days <= 0 || price <= 0 || cerInicial <= 0 || lastCER <= 0)
-    return { tna180: 0, tir: 0, duration: 0, totalReturn: 0 };
-
-  const adjustedFace = 100 * lastCER / cerInicial;
-  const effectivePrice = commission > 0
-    ? adjustedFace / Math.pow(1 + commission / 200, days360(getSettlementDate(), new Date(maturityDate)) / 180)
-    : price;
-
-  const days360Val = days360(getSettlementDate(), new Date(maturityDate));
-  const tna180 = (Math.pow(adjustedFace / effectivePrice, 180 / days360Val) - 1) * 2;
-  const tir = Math.pow(adjustedFace / effectivePrice, 365 / days) - 1;
-  const totalReturn = (adjustedFace / effectivePrice) - 1;
-  const duration = days / 365;
-
-  return {
-    tna180: tna180 * 100,
-    tir: tir * 100,
-    duration,
-    totalReturn: totalReturn * 100,
-  };
-}
-
-/**
- * DAYS360 approximation (US/NASD method)
- */
 function days360(start: Date, end: Date): number {
   let d1 = Math.min(start.getDate(), 30);
   let d2 = end.getDate();
@@ -106,6 +38,134 @@ function days360(start: Date, end: Date): number {
   const y2 = end.getFullYear();
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
 }
+
+// --- LECAP ---
+
+export interface LecapResult {
+  days: number;
+  duration: number;
+  totalReturn: number;
+  tna: number;
+  tea: number;
+  tem: number;
+}
+
+/**
+ * LECAP calculation from Excel:
+ *   days = maturity - settlement
+ *   duration = days / 365
+ *   totalReturn = redemptionValue / price - 1
+ *   TNA = totalReturn * 365 / days
+ *   TEA = (redemptionValue / price)^(365/days) - 1
+ *   TEM = (1 + TEA)^(30/365) - 1
+ *
+ * With commission (TNA based):
+ *   TNA_net = TNA_bruto - commission
+ *   price_adj = redemptionValue / (1 + TNA_net * days / 365)
+ */
+export function calcLecap(
+  price: number,
+  maturityDate: string,
+  redemptionValue: number,
+  tPlus: number = 1,
+  commissionTNA: number = 0
+): LecapResult | null {
+  const days = daysUntil(maturityDate, tPlus);
+  if (days <= 0 || price <= 0 || redemptionValue <= 0) return null;
+
+  const duration = days / 365;
+
+  // Gross metrics
+  const totalReturn = (redemptionValue / price) - 1;
+  const tna = totalReturn * 365 / days;
+  const tea = Math.pow(redemptionValue / price, 365 / days) - 1;
+  const tem = Math.pow(1 + tea, 30 / 365) - 1;
+
+  if (commissionTNA > 0) {
+    const tnaNet = tna - commissionTNA / 100;
+    const priceAdj = redemptionValue / (1 + tnaNet * days / 365);
+    const trAdj = (redemptionValue / priceAdj) - 1;
+    const teaAdj = Math.pow(redemptionValue / priceAdj, 365 / days) - 1;
+    const temAdj = Math.pow(1 + teaAdj, 30 / 365) - 1;
+    return {
+      days,
+      duration,
+      totalReturn: trAdj * 100,
+      tna: tnaNet * 100,
+      tea: teaAdj * 100,
+      tem: temAdj * 100,
+    };
+  }
+
+  return {
+    days,
+    duration,
+    totalReturn: totalReturn * 100,
+    tna: tna * 100,
+    tea: tea * 100,
+    tem: tem * 100,
+  };
+}
+
+// --- CER ---
+
+export interface CerResult {
+  days: number;
+  duration: number;
+  adjustedFace: number;
+  totalReturn: number;
+  tna180: number;
+  tir: number;
+}
+
+/**
+ * CER calculation from Excel:
+ *   adjustedFace = 100 * lastCER / cerInicial
+ *   days360Val = DAYS360(settlement, maturity)
+ *   TNA(180/360) = (POWER(adjustedFace/price, 180/days360Val) - 1) * 2
+ *   TIR = POWER(adjustedFace/price, 365/days) - 1
+ *
+ * With commission (TNA based):
+ *   price_adj = adjustedFace / POWER(1 + commission/200, days360Val/180)
+ */
+export function calcCer(
+  price: number,
+  maturityDate: string,
+  cerInicial: number,
+  lastCER: number,
+  tPlus: number = 1,
+  commissionTNA: number = 0
+): CerResult | null {
+  const days = daysUntil(maturityDate, tPlus);
+  if (days <= 0 || price <= 0 || cerInicial <= 0 || lastCER <= 0) return null;
+
+  const adjustedFace = 100 * lastCER / cerInicial;
+  const settlement = getSettlementDate(tPlus);
+  const days360Val = days360(settlement, new Date(maturityDate));
+  const duration = days / 365;
+
+  let effectivePrice = price;
+  if (commissionTNA > 0) {
+    effectivePrice = adjustedFace / Math.pow(1 + commissionTNA / 200, days360Val / 180);
+  }
+
+  const tna180 = days360Val > 0
+    ? (Math.pow(adjustedFace / effectivePrice, 180 / days360Val) - 1) * 2
+    : 0;
+  const tir = Math.pow(adjustedFace / effectivePrice, 365 / days) - 1;
+  const totalReturn = (adjustedFace / effectivePrice) - 1;
+
+  return {
+    days,
+    duration,
+    adjustedFace,
+    totalReturn: totalReturn * 100,
+    tna180: tna180 * 100,
+    tir: tir * 100,
+  };
+}
+
+// --- Formatting ---
 
 export function formatPercent(value: number): string {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
