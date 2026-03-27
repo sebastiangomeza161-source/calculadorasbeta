@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getInstrument } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useCER } from '@/hooks/useCER';
 import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
 import { ArrowLeft } from 'lucide-react';
 
