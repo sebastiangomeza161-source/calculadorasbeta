@@ -59,14 +59,21 @@ export default function Index() {
         {/* Sources */}
         <div className="flex items-center gap-4 mb-4 text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
           <span>Precios: data912</span>
-          {activeTab === 'CER' && <span>· CER: manual</span>}
+          {activeTab === 'CER' && (
+            <span>· CER: {cerData?.source === 'bcra_api' ? 'BCRA' : cerData?.source?.startsWith('cached') ? 'BCRA (cache)' : 'manual'}</span>
+          )}
           <span>· Variación: precio hoy / precio ayer</span>
         </div>
 
-        {/* CER notice for CER tab */}
+        {/* CER info for CER tab */}
         {activeTab === 'CER' && (
-          <div className="terminal-card px-4 py-3 mb-4 text-xs text-muted-foreground">
-            ⚠ Las métricas CER requieren un valor de CER actual. Ingresá al detalle de cada instrumento para calcular con tu CER manual.
+          <div className="terminal-card px-4 py-3 mb-4 text-xs text-muted-foreground flex items-center justify-between">
+            <span>
+              {cerData?.cer
+                ? `CER actual: ${cerData.cer.toFixed(4)} (${cerData.date}) — Fuente: ${cerData.source === 'bcra_api' ? 'BCRA API' : cerData.source?.startsWith('cached') ? 'BCRA (cache)' : 'No disponible'}`
+                : cerLoading ? '⏳ Cargando CER desde BCRA...' : '⚠ No se pudo obtener el CER. Ingresá manualmente en el detalle.'
+              }
+            </span>
           </div>
         )}
 
