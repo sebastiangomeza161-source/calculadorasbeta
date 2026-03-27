@@ -86,7 +86,7 @@ export default function Index() {
       {/* Footer */}
       <footer className="border-t border-border px-4 md:px-8 py-4 mt-12">
         <p className="text-[10px] text-muted-foreground text-center font-mono">
-          Fuentes: data912.com · CER: ingreso manual · Arquitectura preparada para integración BCRA
+          Fuentes: data912.com · CER: BCRA API (con fallback manual)
         </p>
       </footer>
     </div>
