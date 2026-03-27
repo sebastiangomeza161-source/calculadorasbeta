@@ -16,11 +16,11 @@ async function fetchFromBCRA(): Promise<{ value: number; date: string } | null> 
   const desdeStr = desde.toISOString().split('T')[0];
   const hastaStr = today.toISOString().split('T')[0];
 
-  // Try v4 first, then v3
+  // Try multiple API versions/paths
   const urls = [
-    `https://api.bcra.gob.ar/estadisticas/v4/DatosVariable/${CER_VARIABLE_ID}?desde=${desdeStr}&hasta=${hastaStr}`,
-    `https://api.bcra.gob.ar/estadisticas/v4/DatosVariable/${CER_VARIABLE_ID}/${desdeStr}/${hastaStr}`,
-    `https://api.bcra.gob.ar/estadisticas/v3/DatosVariable/${CER_VARIABLE_ID}/${desdeStr}/${hastaStr}`,
+    `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${CER_VARIABLE_ID}?desde=${desdeStr}&hasta=${hastaStr}`,
+    `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${CER_VARIABLE_ID}`,
+    `https://api.bcra.gob.ar/estadisticas/v3.0/DatosVariable/${CER_VARIABLE_ID}/${desdeStr}/${hastaStr}`,
   ];
 
   for (const url of urls) {
