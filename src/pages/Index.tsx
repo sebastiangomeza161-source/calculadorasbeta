@@ -79,7 +79,7 @@ export default function Index() {
 
         {/* Table */}
         <div className="terminal-card overflow-hidden">
-          <InstrumentTable instruments={enriched} />
+          <InstrumentTable instruments={enriched} lastCER={cerData?.cer ?? undefined} />
         </div>
       </main>
 
