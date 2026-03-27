@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LECAPS, CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useCER } from '@/hooks/useCER';
 import InstrumentTable from '@/components/InstrumentTable';
 
 type TabType = 'LECAP' | 'CER';
@@ -8,6 +9,7 @@ type TabType = 'LECAP' | 'CER';
 export default function Index() {
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const { data: livePrices, isLoading } = useLivePrices();
+  const { data: cerData, isLoading: cerLoading } = useCER();
 
   const instruments = activeTab === 'LECAP' ? LECAPS : CER_INSTRUMENTS;
 
