@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getInstrument } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useCER } from '@/hooks/useCER';
 import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
 import { ArrowLeft } from 'lucide-react';
 
@@ -10,6 +11,7 @@ export default function InstrumentDetail() {
   const navigate = useNavigate();
   const instrument = getInstrument(ticker || '');
   const { data: livePrices } = useLivePrices();
+  const { data: cerData } = useCER();
 
   const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
   const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
@@ -18,6 +20,15 @@ export default function InstrumentDetail() {
   const [tPlus, setTPlus] = useState('1');
   const [commission, setCommission] = useState('0');
   const [manualCER, setManualCER] = useState('');
+  const [cerAutoFilled, setCerAutoFilled] = useState(false);
+
+  // Auto-fill CER from BCRA when available
+  useEffect(() => {
+    if (cerData?.cer && cerData.cer > 0 && !manualCER && !cerAutoFilled) {
+      setManualCER(cerData.cer.toString());
+      setCerAutoFilled(true);
+    }
+  }, [cerData, manualCER, cerAutoFilled]);
 
   const activePrice = manualPrice ? parseFloat(manualPrice) : livePrice;
   const activeTPlus = parseInt(tPlus) || 1;
@@ -68,7 +79,7 @@ export default function InstrumentDetail() {
         </button>
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
           <span>Precio: data912</span>
-          {isCER && <span>· CER: manual</span>}
+          {isCER && <span>· CER: {cerData?.source === 'bcra_api' ? 'BCRA' : cerData?.source?.startsWith('cached') ? 'BCRA (cache)' : 'manual'}</span>}
         </div>
       </header>
 
@@ -186,7 +197,7 @@ export default function InstrumentDetail() {
                   className="input-field"
                 />
                 <span className="text-[9px] text-muted-foreground mt-1 block">
-                  CER inicial: {instrument.cerInicial?.toFixed(4)}
+                  {cerAutoFilled ? `Auto: BCRA (${cerData?.date})` : 'CER inicial:'} {!cerAutoFilled && instrument.cerInicial?.toFixed(4)}
                 </span>
               </div>
             )}
@@ -201,7 +212,7 @@ export default function InstrumentDetail() {
 
           {isCER && activeCER <= 0 && activePrice > 0 && (
             <div className="bg-primary/10 border border-primary/30 rounded-md px-4 py-3 text-xs text-primary">
-              Ingresá el valor de CER actual para calcular las métricas CER.
+              No se pudo obtener el CER automáticamente. Ingresá el valor de CER actual para calcular las métricas.
             </div>
           )}
 

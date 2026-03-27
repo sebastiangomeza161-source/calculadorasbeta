@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LECAPS, CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useCER } from '@/hooks/useCER';
 import InstrumentTable from '@/components/InstrumentTable';
 
 type TabType = 'LECAP' | 'CER';
@@ -8,6 +9,7 @@ type TabType = 'LECAP' | 'CER';
 export default function Index() {
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const { data: livePrices, isLoading } = useLivePrices();
+  const { data: cerData, isLoading: cerLoading } = useCER();
 
   const instruments = activeTab === 'LECAP' ? LECAPS : CER_INSTRUMENTS;
 
@@ -57,27 +59,34 @@ export default function Index() {
         {/* Sources */}
         <div className="flex items-center gap-4 mb-4 text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
           <span>Precios: data912</span>
-          {activeTab === 'CER' && <span>· CER: manual</span>}
+          {activeTab === 'CER' && (
+            <span>· CER: {cerData?.source === 'bcra_api' ? 'BCRA' : cerData?.source?.startsWith('cached') ? 'BCRA (cache)' : 'manual'}</span>
+          )}
           <span>· Variación: precio hoy / precio ayer</span>
         </div>
 
-        {/* CER notice for CER tab */}
+        {/* CER info for CER tab */}
         {activeTab === 'CER' && (
-          <div className="terminal-card px-4 py-3 mb-4 text-xs text-muted-foreground">
-            ⚠ Las métricas CER requieren un valor de CER actual. Ingresá al detalle de cada instrumento para calcular con tu CER manual.
+          <div className="terminal-card px-4 py-3 mb-4 text-xs text-muted-foreground flex items-center justify-between">
+            <span>
+              {cerData?.cer
+                ? `CER actual: ${cerData.cer.toFixed(4)} (${cerData.date}) — Fuente: ${cerData.source === 'bcra_api' ? 'BCRA API' : cerData.source?.startsWith('cached') ? 'BCRA (cache)' : 'No disponible'}`
+                : cerLoading ? '⏳ Cargando CER desde BCRA...' : '⚠ No se pudo obtener el CER. Ingresá manualmente en el detalle.'
+              }
+            </span>
           </div>
         )}
 
         {/* Table */}
         <div className="terminal-card overflow-hidden">
-          <InstrumentTable instruments={enriched} />
+          <InstrumentTable instruments={enriched} lastCER={cerData?.cer ?? undefined} />
         </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-border px-4 md:px-8 py-4 mt-12">
         <p className="text-[10px] text-muted-foreground text-center font-mono">
-          Fuentes: data912.com · CER: ingreso manual · Arquitectura preparada para integración BCRA
+          Fuentes: data912.com · CER: BCRA API (con fallback manual)
         </p>
       </footer>
     </div>

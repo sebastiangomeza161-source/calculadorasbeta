@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      cer_values: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          source: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          source?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          source?: string
+          value?: number
+        }
+        Relationships: []
+      }
       daily_prices: {
         Row: {
           ask: number | null
