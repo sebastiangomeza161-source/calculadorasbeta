@@ -79,7 +79,7 @@ export default function InstrumentDetail() {
         </button>
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
           <span>Precio: data912</span>
-          {isCER && <span>· CER: manual</span>}
+          {isCER && <span>· CER: {cerData?.source === 'bcra_api' ? 'BCRA' : cerData?.source?.startsWith('cached') ? 'BCRA (cache)' : 'manual'}</span>}
         </div>
       </header>
 
