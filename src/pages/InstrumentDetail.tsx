@@ -20,6 +20,15 @@ export default function InstrumentDetail() {
   const [tPlus, setTPlus] = useState('1');
   const [commission, setCommission] = useState('0');
   const [manualCER, setManualCER] = useState('');
+  const [cerAutoFilled, setCerAutoFilled] = useState(false);
+
+  // Auto-fill CER from BCRA when available
+  useEffect(() => {
+    if (cerData?.cer && cerData.cer > 0 && !manualCER && !cerAutoFilled) {
+      setManualCER(cerData.cer.toString());
+      setCerAutoFilled(true);
+    }
+  }, [cerData, manualCER, cerAutoFilled]);
 
   const activePrice = manualPrice ? parseFloat(manualPrice) : livePrice;
   const activeTPlus = parseInt(tPlus) || 1;
