@@ -212,7 +212,7 @@ export default function InstrumentDetail() {
 
           {isCER && activeCER <= 0 && activePrice > 0 && (
             <div className="bg-primary/10 border border-primary/30 rounded-md px-4 py-3 text-xs text-primary">
-              Ingresá el valor de CER actual para calcular las métricas CER.
+              No se pudo obtener el CER automáticamente. Ingresá el valor de CER actual para calcular las métricas.
             </div>
           )}
 
