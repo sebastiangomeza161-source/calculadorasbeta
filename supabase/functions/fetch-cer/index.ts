@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // CER = Variable ID 27 in BCRA API
-const CER_VARIABLE_ID = 27;
+const CER_VARIABLE_ID = 30;
 
 async function fetchFromBCRA(): Promise<{ value: number; date: string } | null> {
   const today = new Date();
