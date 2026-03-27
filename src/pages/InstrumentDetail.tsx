@@ -11,6 +11,7 @@ export default function InstrumentDetail() {
   const navigate = useNavigate();
   const instrument = getInstrument(ticker || '');
   const { data: livePrices } = useLivePrices();
+  const { data: cerData } = useCER();
 
   const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
   const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
