@@ -20,7 +20,8 @@ export function getSettlementDate(tPlus: number = 1): Date {
 }
 
 export function daysUntil(maturityDate: string, tPlus: number = 1): number {
-  const target = new Date(maturityDate);
+  const [y, m, d] = maturityDate.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
   const settlement = getSettlementDate(tPlus);
   const diff = target.getTime() - settlement.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
