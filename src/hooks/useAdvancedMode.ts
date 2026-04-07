@@ -1,37 +1,39 @@
-import { useState, useCallback, useSyncExternalStore } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 const ADVANCED_PASSWORD = 'Research';
 
-// Shared state across all hook instances
+// Simple event-based shared state
 let _isAdvanced = false;
-const listeners = new Set<() => void>();
+const listeners = new Set<(v: boolean) => void>();
 
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
-
-function getSnapshot() {
-  return _isAdvanced;
-}
-
-function setAdvanced(val: boolean) {
-  _isAdvanced = val;
-  listeners.forEach(cb => cb());
+function notify() {
+  listeners.forEach(cb => cb(_isAdvanced));
 }
 
 export function useAdvancedMode() {
-  const isAdvanced = useSyncExternalStore(subscribe, getSnapshot);
+  const [isAdvanced, setIsAdvanced] = useState(_isAdvanced);
+
+  useEffect(() => {
+    const handler = (v: boolean) => setIsAdvanced(v);
+    listeners.add(handler);
+    // Sync on mount in case state changed
+    setIsAdvanced(_isAdvanced);
+    return () => { listeners.delete(handler); };
+  }, []);
 
   const activate = useCallback((password: string): boolean => {
     if (password === ADVANCED_PASSWORD) {
-      setAdvanced(true);
+      _isAdvanced = true;
+      notify();
       return true;
     }
     return false;
   }, []);
 
-  const deactivate = useCallback(() => setAdvanced(false), []);
+  const deactivate = useCallback(() => {
+    _isAdvanced = false;
+    notify();
+  }, []);
 
   return { isAdvanced, activate, deactivate };
 }
