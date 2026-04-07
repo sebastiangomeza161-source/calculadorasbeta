@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const ALL_TICKERS = new Set([
+const BASE_TICKERS = new Set([
   'S17A6','S30A6','S15Y6','S29Y6','T30J6','S31L6','S31G6','S30S6','S30O6','S30N6','T15E7','T30A7','T31Y7','T30J7',
   'X15Y6','X29Y6','TZX26','X31L6','X30S6','TZXO6','X30N6','TZXD6','TZXM7','TZXA7','TZXY7','TZX27','TZXD7','TZX28',
 ]);
@@ -20,6 +20,20 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if this is a lookup request for a specific ticker
+    let lookupTicker: string | null = null;
+    let extraTickers: string[] = [];
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        lookupTicker = body.lookupTicker || null;
+        extraTickers = body.extraTickers || [];
+      } catch { /* no body */ }
+    }
+
+    const ALL_TICKERS = new Set([...BASE_TICKERS, ...extraTickers]);
+    if (lookupTicker) ALL_TICKERS.add(lookupTicker);
+
     // Fetch from data912
     const [notesRes, bondsRes] = await Promise.all([
       fetch('https://data912.com/live/arg_notes'),
@@ -33,13 +47,14 @@ Deno.serve(async (req) => {
     const [notes, bonds] = await Promise.all([notesRes.json(), bondsRes.json()]);
     const allData = [...notes, ...bonds];
 
-    const prices: Record<string, { price: number; bid: number; ask: number }> = {};
+    const prices: Record<string, { price: number; bid: number; ask: number; maturity_date?: string }> = {};
     for (const item of allData) {
       if (ALL_TICKERS.has(item.symbol)) {
         prices[item.symbol] = {
           price: item.c || 0,
           bid: item.px_bid || 0,
           ask: item.px_ask || 0,
+          maturity_date: item.maturity_date || undefined,
         };
       }
     }
@@ -69,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     // Variation = (current / yesterday - 1) * 100
-    const result: Record<string, { price: number; bid: number; ask: number; change: number | null }> = {};
+    const result: Record<string, { price: number; bid: number; ask: number; change: number | null; maturity_date?: string }> = {};
     for (const [ticker, d] of Object.entries(prices)) {
       const change = (yesterdayMap[ticker] && yesterdayMap[ticker] > 0 && d.price > 0)
         ? ((d.price / yesterdayMap[ticker]) - 1) * 100
@@ -77,9 +92,9 @@ Deno.serve(async (req) => {
       result[ticker] = { ...d, change };
     }
 
-    // Upsert today's prices
+    // Upsert today's prices (only base tickers)
     const rows = Object.entries(prices)
-      .filter(([, d]) => d.price > 0)
+      .filter(([t, d]) => d.price > 0 && BASE_TICKERS.has(t))
       .map(([ticker, d]) => ({
         ticker,
         price: d.price,
