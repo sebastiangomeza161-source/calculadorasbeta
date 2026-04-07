@@ -75,7 +75,7 @@ export default function Index() {
       <header className="border-b border-border bg-card px-4 md:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold tracking-tight">
-            <span className="text-accent">Renta</span>Fija
+            <span className="text-accent">AD</span>CAP
           </h1>
           <span className="text-xs text-muted-foreground hidden md:inline">
             Argentina · LECAP & CER
