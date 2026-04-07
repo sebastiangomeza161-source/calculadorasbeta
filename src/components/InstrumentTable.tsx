@@ -74,7 +74,7 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
                 className="table-row-hover border-b border-border/30"
                 onClick={() => navigate(`/instrument/${inst.ticker}`)}
               >
-                <td className="py-3 px-4 font-mono text-xs font-semibold text-accent">
+                <td className="py-3 px-4 font-mono text-xs font-semibold text-ticker">
                   {inst.ticker}
                 </td>
                 <td className="py-3 px-4 font-mono text-xs text-right text-muted-foreground">
