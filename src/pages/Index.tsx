@@ -13,6 +13,7 @@ import { Plus, Moon, Sun } from 'lucide-react';
 type TabType = 'LECAP' | 'CER';
 
 export default function Index() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
   const [manualCER, setManualCER] = useState('');
