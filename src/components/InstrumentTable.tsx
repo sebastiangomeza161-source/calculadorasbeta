@@ -66,7 +66,8 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
               }
             }
 
-            const maturityShort = new Date(inst.maturityDate).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+            const [y, m, d] = inst.maturityDate.split('-').map(Number);
+            const maturityShort = new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 
             return (
               <tr
