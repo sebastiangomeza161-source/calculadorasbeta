@@ -20,7 +20,8 @@ export function getSettlementDate(tPlus: number = 1): Date {
 }
 
 export function daysUntil(maturityDate: string, tPlus: number = 1): number {
-  const target = new Date(maturityDate);
+  const [y, m, d] = maturityDate.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
   const settlement = getSettlementDate(tPlus);
   const diff = target.getTime() - settlement.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -153,7 +154,8 @@ export function calcCer(
 
   const adjustedFace = 100 * lastCER / cerInicial;
   const settlement = getSettlementDate(tPlus);
-  const days360Val = days360(settlement, new Date(maturityDate));
+  const [my, mm, md] = maturityDate.split('-').map(Number);
+  const days360Val = days360(settlement, new Date(my, mm - 1, md));
   const duration = days360Val / 360;
 
   let effectivePrice = price;
@@ -187,7 +189,10 @@ export function formatPercent(value: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('es-AR', {
+  // Parse as local date to avoid timezone shift (YYYY-MM-DD → parts)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('es-AR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
