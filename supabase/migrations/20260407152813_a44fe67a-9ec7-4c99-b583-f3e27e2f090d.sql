@@ -1,0 +1,1 @@
+DROP POLICY "Allow anon insert" ON public.daily_prices;
