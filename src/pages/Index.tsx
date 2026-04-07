@@ -106,20 +106,23 @@ export default function Index() {
             {theme === 'night' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
             {theme === 'night' ? 'Día' : 'Noche'}
           </button>
+          <button
+            onClick={handleAdvancedToggle}
+            className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+            title={isAdvanced ? 'Desactivar modo avanzado' : 'Activar modo avanzado'}
+          >
+            {isAdvanced ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+            {isAdvanced ? 'Avanzado' : 'Básico'}
+          </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Tabs */}
-        <div className="flex items-center gap-2 mb-5">
-          {(['LECAP', 'CER'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`tab-button ${activeTab === tab ? 'tab-button-active' : 'tab-button-inactive'}`}
-            >
-              {tab}
-            </button>
+      {isAdvanced && (
+        <div className="bg-accent/10 border-b border-accent/20 px-4 md:px-8 py-1.5 flex items-center gap-2">
+          <ShieldCheck className="w-3 h-3 text-accent" />
+          <span className="text-[10px] text-accent font-mono uppercase tracking-wider">Modo avanzado activado</span>
+        </div>
+      )}
           ))}
         </div>
 
