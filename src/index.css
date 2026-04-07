@@ -47,6 +47,8 @@
     --sidebar-accent-foreground: 40 10% 90%;
     --sidebar-border: 220 15% 18%;
     --sidebar-ring: 35 95% 55%;
+
+    --ticker: 35 95% 55%;
   }
 
   .theme-day {
