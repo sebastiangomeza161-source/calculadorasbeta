@@ -4,6 +4,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
+import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
