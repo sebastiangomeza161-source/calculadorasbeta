@@ -29,13 +29,25 @@ export function daysUntil(maturityDate: string, tPlus: number = 1): number {
 // --- DAYS360 (US/NASD method) ---
 
 function days360(start: Date, end: Date): number {
-  let d1 = Math.min(start.getDate(), 30);
+  let d1 = start.getDate();
   let d2 = end.getDate();
-  if (d1 === 30 && d2 === 31) d2 = 30;
   const m1 = start.getMonth();
   const m2 = end.getMonth();
   const y1 = start.getFullYear();
   const y2 = end.getFullYear();
+
+  // US/NASD 30/360 convention (matches Excel DIAS360)
+  if (d1 === 31) d1 = 30;
+  if (d2 === 31 && d1 >= 30) d2 = 30;
+
+  // Handle Feb end-of-month
+  const lastDayFeb1 = new Date(y1, m1 + 1, 0).getDate();
+  if (m1 === 1 && d1 === lastDayFeb1) {
+    d1 = 30;
+    const lastDayFeb2 = new Date(y2, m2 + 1, 0).getDate();
+    if (m2 === 1 && d2 === lastDayFeb2) d2 = 30;
+  }
+
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
 }
 
@@ -142,25 +154,28 @@ export function calcCer(
   const adjustedFace = 100 * lastCER / cerInicial;
   const settlement = getSettlementDate(tPlus);
   const days360Val = days360(settlement, new Date(maturityDate));
-  const duration = days / 365;
+  const duration = days360Val / 360;
 
   let effectivePrice = price;
   if (commissionTNA > 0) {
     effectivePrice = adjustedFace / Math.pow(1 + commissionTNA / 200, days360Val / 180);
   }
 
+  // Excel: =((POWER((100*Q/P/$C-1)+1, 180/DIAS360(tradeDate, maturity))-1)*360/180)*100
+  // ratio = 100 * lastCER / (cerInicial * price) = adjustedFace / price
+  const ratio = adjustedFace / effectivePrice;
   const tna180 = days360Val > 0
-    ? (Math.pow(adjustedFace / effectivePrice, 180 / days360Val) - 1) * 2
+    ? (Math.pow(ratio, 180 / days360Val) - 1) * 2 * 100
     : 0;
-  const tir = Math.pow(adjustedFace / effectivePrice, 365 / days) - 1;
-  const totalReturn = (adjustedFace / effectivePrice) - 1;
+  const tir = Math.pow(ratio, 365 / days) - 1;
+  const totalReturn = (ratio - 1);
 
   return {
     days,
     duration,
     adjustedFace,
     totalReturn: totalReturn * 100,
-    tna180: tna180 * 100,
+    tna180,
     tir: tir * 100,
   };
 }
