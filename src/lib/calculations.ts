@@ -187,7 +187,10 @@ export function formatPercent(value: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('es-AR', {
+  // Parse as local date to avoid timezone shift (YYYY-MM-DD → parts)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('es-AR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
