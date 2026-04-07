@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, ReferenceLine,
+  CartesianGrid, Line, ComposedChart,
 } from 'recharts';
 
 interface DataPoint {
@@ -33,13 +33,44 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
+// Logarithmic regression: y = a + b * ln(x)
+function logTrendLine(points: DataPoint[], steps = 50): { duration: number; yield: number }[] {
+  if (points.length < 2) return [];
+
+  const valid = points.filter(p => p.duration > 0);
+  if (valid.length < 2) return [];
+
+  const n = valid.length;
+  const sumLnX = valid.reduce((s, p) => s + Math.log(p.duration), 0);
+  const sumY = valid.reduce((s, p) => s + p.yield, 0);
+  const sumLnX2 = valid.reduce((s, p) => s + Math.log(p.duration) ** 2, 0);
+  const sumLnXY = valid.reduce((s, p) => s + Math.log(p.duration) * p.yield, 0);
+
+  const denom = n * sumLnX2 - sumLnX ** 2;
+  if (Math.abs(denom) < 1e-10) return [];
+
+  const b = (n * sumLnXY - sumLnX * sumY) / denom;
+  const a = (sumY - b * sumLnX) / n;
+
+  const minD = Math.min(...valid.map(p => p.duration));
+  const maxD = Math.max(...valid.map(p => p.duration));
+  const stepSize = (maxD - minD) / (steps - 1);
+
+  return Array.from({ length: steps }, (_, i) => {
+    const dur = minD + i * stepSize;
+    return { duration: dur, yield: a + b * Math.log(dur) };
+  });
+}
+
 export default function YieldCurve({ data, yLabel }: Props) {
   const sorted = useMemo(() => [...data].sort((a, b) => a.duration - b.duration), [data]);
+  const trend = useMemo(() => logTrendLine(sorted), [sorted]);
 
   if (sorted.length === 0) return null;
 
-  const yMin = Math.floor(Math.min(...sorted.map(d => d.yield)) - 2);
-  const yMax = Math.ceil(Math.max(...sorted.map(d => d.yield)) + 2);
+  const allYields = [...sorted.map(d => d.yield), ...trend.map(d => d.yield)];
+  const yMin = Math.floor(Math.min(...allYields) - 2);
+  const yMax = Math.ceil(Math.max(...allYields) + 2);
 
   return (
     <div className="terminal-card p-4 mt-4">
@@ -47,15 +78,11 @@ export default function YieldCurve({ data, yLabel }: Props) {
         Curva de rendimiento · {yLabel}
       </h3>
       <ResponsiveContainer width="100%" height={280}>
-        <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(220 15% 18%)"
-          />
+        <ComposedChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 18%)" />
           <XAxis
             dataKey="duration"
             type="number"
-            name="Duration"
             tick={{ fontSize: 10, fill: 'hsl(220 10% 50%)' }}
             tickLine={false}
             axisLine={{ stroke: 'hsl(220 15% 18%)' }}
@@ -83,14 +110,28 @@ export default function YieldCurve({ data, yLabel }: Props) {
             }}
           />
           <Tooltip content={<CustomTooltip />} />
+          {/* Trend line */}
+          {trend.length > 0 && (
+            <Line
+              data={trend}
+              dataKey="yield"
+              stroke="hsl(35 95% 45%)"
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              dot={false}
+              isAnimationActive={false}
+              name="Tendencia"
+            />
+          )}
+          {/* Data points */}
           <Scatter
             data={sorted}
             fill="hsl(35 95% 55%)"
             strokeWidth={0}
+            // @ts-ignore - recharts accepts r prop
             r={5}
-            line={{ stroke: 'hsl(35 95% 45%)', strokeWidth: 1.5, strokeDasharray: '4 2' }}
           />
-        </ScatterChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

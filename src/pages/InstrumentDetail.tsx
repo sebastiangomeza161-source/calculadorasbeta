@@ -197,7 +197,7 @@ export default function InstrumentDetail() {
                   className="input-field"
                 />
                 <span className="text-[9px] text-muted-foreground mt-1 block">
-                  {cerAutoFilled ? `Auto: BCRA (${cerData?.date})` : 'CER inicial:'} {!cerAutoFilled && instrument.cerInicial?.toFixed(4)}
+                  {cerAutoFilled ? `Auto: BCRA (${cerData?.cerDate})` : 'CER inicial:'} {!cerAutoFilled && instrument.cerInicial?.toFixed(4)}
                 </span>
               </div>
             )}

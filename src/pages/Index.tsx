@@ -3,7 +3,7 @@ import { LECAPS, CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
-import { calcLecap, calcCer, daysUntil, formatPercent } from '@/lib/calculations';
+import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
@@ -14,19 +14,21 @@ type TabType = 'LECAP' | 'CER';
 export default function Index() {
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
+  const [manualCER, setManualCER] = useState('');
   const { custom, addInstrument } = useCustomInstruments();
 
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
   const { data: cerData, isLoading: cerLoading } = useCER();
 
-  const baseLecaps = LECAPS;
-  const baseCer = CER_INSTRUMENTS;
-  const customLecaps = custom.filter(i => i.type === 'LECAP');
-  const customCer = custom.filter(i => i.type === 'CER');
+  // Determine effective CER: API first, manual fallback
+  const manualCERValue = manualCER ? parseFloat(manualCER) : null;
+  const cerAvailable = cerData?.cer != null && cerData.cer > 0;
+  const effectiveCER = cerAvailable ? cerData!.cer! : (manualCERValue && manualCERValue > 0 ? manualCERValue : null);
+  const cerSource = cerAvailable ? 'BCRA API' : (manualCERValue && manualCERValue > 0 ? 'CER manual' : null);
 
-  const allLecaps = [...baseLecaps, ...customLecaps];
-  const allCer = [...baseCer, ...customCer];
+  const allLecaps = [...LECAPS, ...custom.filter(i => i.type === 'LECAP')];
+  const allCer = [...CER_INSTRUMENTS, ...custom.filter(i => i.type === 'CER')];
   const instruments = activeTab === 'LECAP' ? allLecaps : allCer;
 
   const enriched = instruments
@@ -37,7 +39,6 @@ export default function Index() {
     }))
     .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
 
-  // Yield curve data
   const curveData = useMemo(() => {
     return enriched
       .filter(inst => inst.marketPrice > 0)
@@ -49,21 +50,15 @@ export default function Index() {
         if (activeTab === 'LECAP' && inst.redemptionValue) {
           const r = calcLecap(inst.marketPrice, inst.maturityDate, inst.redemptionValue);
           if (r) yieldVal = r.tna;
-        } else if (activeTab === 'CER' && inst.cerInicial && cerData?.cer) {
-          const r = calcCer(inst.marketPrice, inst.maturityDate, inst.cerInicial, cerData.cer);
+        } else if (activeTab === 'CER' && inst.cerInicial && effectiveCER) {
+          const r = calcCer(inst.marketPrice, inst.maturityDate, inst.cerInicial, effectiveCER);
           if (r) yieldVal = r.tna180;
         }
 
-        return {
-          ticker: inst.ticker,
-          price: inst.marketPrice,
-          days,
-          duration,
-          yield: yieldVal,
-        };
+        return { ticker: inst.ticker, price: inst.marketPrice, days, duration, yield: yieldVal };
       })
       .filter(d => d.yield !== 0);
-  }, [enriched, activeTab, cerData]);
+  }, [enriched, activeTab, effectiveCER]);
 
   const timestamp = livePrices?.timestamp
     ? new Date(livePrices.timestamp).toLocaleString('es-AR', {
@@ -108,21 +103,57 @@ export default function Index() {
         {/* Sources */}
         <div className="flex items-center gap-4 mb-4 text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
           <span>Precios: data912</span>
-          {activeTab === 'CER' && (
-            <span>· CER: {cerData?.source === 'bcra_api' ? 'BCRA' : cerData?.source?.startsWith('cached') ? 'BCRA (cache)' : 'manual'}</span>
-          )}
+          {activeTab === 'CER' && cerSource && <span>· CER: {cerSource}</span>}
           <span>· Variación: precio hoy / precio ayer</span>
         </div>
 
-        {/* CER info */}
+        {/* CER info + manual fallback */}
         {activeTab === 'CER' && (
-          <div className="terminal-card px-4 py-3 mb-4 text-xs text-muted-foreground flex items-center justify-between">
-            <span>
-              {cerData?.cer
-                ? `CER actual: ${cerData.cer.toFixed(4)} (${cerData.date}) — Fuente: ${cerData.source === 'bcra_api' ? 'BCRA API' : cerData.source?.startsWith('cached') ? 'BCRA (cache)' : 'No disponible'}`
-                : cerLoading ? '⏳ Cargando CER desde BCRA...' : '⚠ No se pudo obtener el CER.'
-              }
-            </span>
+          <div className="space-y-3 mb-4">
+            {/* CER status */}
+            <div className="terminal-card px-4 py-3 text-xs text-muted-foreground">
+              {cerData?.cer ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>
+                    CER para cálculos: <span className="text-foreground font-semibold">{cerData.cer.toFixed(4)}</span>
+                    {cerData.cerDate && <span className="ml-1">({cerData.cerDate})</span>}
+                  </span>
+                  {cerData.latestCer && cerData.latestDate && (
+                    <span>
+                      CER último disponible: <span className="text-foreground">{cerData.latestCer.toFixed(4)}</span>
+                      <span className="ml-1">({cerData.latestDate})</span>
+                    </span>
+                  )}
+                  <span className="text-positive text-[10px] font-mono">Fuente: BCRA API · Rezago: T-10 días hábiles</span>
+                </div>
+              ) : cerLoading ? (
+                <span>⏳ Cargando CER desde BCRA...</span>
+              ) : (
+                <span className="text-destructive">⚠ No se pudo obtener el CER desde BCRA.</span>
+              )}
+            </div>
+
+            {/* Manual CER fallback */}
+            <div className="terminal-card px-4 py-3 flex flex-wrap items-center gap-3">
+              <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap">
+                CER actual (manual)
+              </label>
+              <input
+                type="number"
+                value={manualCER}
+                onChange={(e) => setManualCER(e.target.value)}
+                placeholder="Ej: 732.60"
+                step="0.0001"
+                className="input-field w-40 text-xs py-1.5"
+              />
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {cerAvailable
+                  ? '· Se usa CER de BCRA (este campo es respaldo)'
+                  : manualCERValue && manualCERValue > 0
+                    ? '· ⚠ Usando CER manual para cálculos'
+                    : '· Ingresá un valor como respaldo si BCRA no responde'}
+              </span>
+            </div>
           </div>
         )}
 
@@ -141,7 +172,7 @@ export default function Index() {
               Agregar
             </button>
           </div>
-          <InstrumentTable instruments={enriched} lastCER={cerData?.cer ?? undefined} />
+          <InstrumentTable instruments={enriched} lastCER={effectiveCER ?? undefined} />
         </div>
 
         {/* Yield Curve */}
@@ -154,7 +185,7 @@ export default function Index() {
       {/* Footer */}
       <footer className="border-t border-border px-4 md:px-8 py-4 mt-12">
         <p className="text-[10px] text-muted-foreground text-center font-mono">
-          Fuentes: data912.com · CER: BCRA API (con fallback manual)
+          Fuentes: data912.com · CER: BCRA API (T-10 días hábiles, con fallback manual)
         </p>
       </footer>
 
