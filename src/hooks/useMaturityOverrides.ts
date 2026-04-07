@@ -29,8 +29,23 @@ export function useMaturityOverrides() {
         .from('maturity_overrides')
         .upsert({ ticker, maturity_date: maturityDate, updated_at: new Date().toISOString() }, { onConflict: 'ticker' });
       if (error) throw error;
+      return { ticker, maturityDate };
     },
-    onSuccess: () => {
+    onMutate: async ({ ticker, maturityDate }) => {
+      await queryClient.cancelQueries({ queryKey: ['maturity-overrides'] });
+      const previous = queryClient.getQueryData<Record<string, string>>(['maturity-overrides']);
+      queryClient.setQueryData<Record<string, string>>(['maturity-overrides'], old => ({
+        ...old,
+        [ticker]: maturityDate,
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['maturity-overrides'], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['maturity-overrides'] });
     },
   });
