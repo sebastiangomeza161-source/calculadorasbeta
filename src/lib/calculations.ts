@@ -154,7 +154,8 @@ export function calcCer(
 
   const adjustedFace = 100 * lastCER / cerInicial;
   const settlement = getSettlementDate(tPlus);
-  const days360Val = days360(settlement, new Date(maturityDate));
+  const [my, mm, md] = maturityDate.split('-').map(Number);
+  const days360Val = days360(settlement, new Date(my, mm - 1, md));
   const duration = days360Val / 360;
 
   let effectivePrice = price;
