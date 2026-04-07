@@ -49,11 +49,15 @@ export default function Index() {
   const instruments = activeTab === 'LECAP' ? allLecaps : allCer;
 
   const enriched = instruments
-    .map(inst => ({
-      ...inst,
-      marketPrice: livePrices?.prices[inst.ticker]?.price ?? 0,
-      change: livePrices?.prices[inst.ticker]?.change ?? null,
-    }))
+    .map(inst => {
+      const maturity = getEffectiveMaturity(inst.ticker, inst.maturityDate);
+      return {
+        ...inst,
+        maturityDate: maturity,
+        marketPrice: livePrices?.prices[inst.ticker]?.price ?? 0,
+        change: livePrices?.prices[inst.ticker]?.change ?? null,
+      };
+    })
     .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
 
   const curveData = useMemo(() => {
