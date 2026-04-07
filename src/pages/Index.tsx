@@ -3,15 +3,17 @@ import { LECAPS, CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
+import { useTheme } from '@/hooks/useTheme';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
-import { Plus } from 'lucide-react';
+import { Plus, Moon, Sun } from 'lucide-react';
 
 type TabType = 'LECAP' | 'CER';
 
 export default function Index() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
   const [manualCER, setManualCER] = useState('');
@@ -83,6 +85,14 @@ export default function Index() {
           {timestamp && <span>Última actualización: {timestamp}</span>}
           {isLoading && <span className="animate-pulse">sync</span>}
           <div className="w-2 h-2 rounded-full bg-positive animate-pulse" />
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+            title={theme === 'night' ? 'Cambiar a modo día' : 'Cambiar a modo noche'}
+          >
+            {theme === 'night' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
+            {theme === 'night' ? 'Día' : 'Noche'}
+          </button>
         </div>
       </header>
 
