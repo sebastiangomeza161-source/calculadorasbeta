@@ -68,6 +68,24 @@ export type Database = {
         }
         Relationships: []
       }
+      maturity_overrides: {
+        Row: {
+          maturity_date: string
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          maturity_date: string
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          maturity_date?: string
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
