@@ -175,7 +175,7 @@ export function calcCer(
     duration,
     adjustedFace,
     totalReturn: totalReturn * 100,
-    tna180: tna180 * 100,
+    tna180,
     tir: tir * 100,
   };
 }
