@@ -154,18 +154,21 @@ export function calcCer(
   const adjustedFace = 100 * lastCER / cerInicial;
   const settlement = getSettlementDate(tPlus);
   const days360Val = days360(settlement, new Date(maturityDate));
-  const duration = days / 365;
+  const duration = days360Val / 360;
 
   let effectivePrice = price;
   if (commissionTNA > 0) {
     effectivePrice = adjustedFace / Math.pow(1 + commissionTNA / 200, days360Val / 180);
   }
 
+  // Excel: =((POWER((100*Q/P/$C-1)+1, 180/DIAS360(tradeDate, maturity))-1)*360/180)*100
+  // ratio = 100 * lastCER / (cerInicial * price) = adjustedFace / price
+  const ratio = adjustedFace / effectivePrice;
   const tna180 = days360Val > 0
-    ? (Math.pow(adjustedFace / effectivePrice, 180 / days360Val) - 1) * 2
+    ? (Math.pow(ratio, 180 / days360Val) - 1) * 2 * 100
     : 0;
-  const tir = Math.pow(adjustedFace / effectivePrice, 365 / days) - 1;
-  const totalReturn = (adjustedFace / effectivePrice) - 1;
+  const tir = Math.pow(ratio, 365 / days) - 1;
+  const totalReturn = (ratio - 1);
 
   return {
     days,
