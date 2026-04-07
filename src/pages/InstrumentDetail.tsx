@@ -12,7 +12,7 @@ export default function InstrumentDetail() {
   const { ticker } = useParams();
   const navigate = useNavigate();
   const instrument = getInstrument(ticker || '');
-  const { data: livePrices } = useLivePrices();
+  const { data: livePrices } = useLivePrices(ticker ? [ticker] : []);
   const { data: cerData } = useCER();
   const { isAdvanced } = useAdvancedMode();
   const { getEffectiveMaturity, saveOverride } = useMaturityOverrides();
