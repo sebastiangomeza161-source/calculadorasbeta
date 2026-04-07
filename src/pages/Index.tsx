@@ -15,6 +15,7 @@ import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 type TabType = 'LECAP' | 'CER';
 
 export default function Index() {
+  const { getEffectiveMaturity } = useMaturityOverrides();
   const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
