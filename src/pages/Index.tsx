@@ -8,7 +8,8 @@ import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
-import { Plus, Moon, Sun } from 'lucide-react';
+import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck } from 'lucide-react';
+import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 
 type TabType = 'LECAP' | 'CER';
 
