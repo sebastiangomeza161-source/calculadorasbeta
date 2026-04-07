@@ -6,6 +6,7 @@ interface PriceData {
   bid: number;
   ask: number;
   change: number | null;
+  maturity_date?: string;
 }
 
 interface PricesResponse {
@@ -13,11 +14,13 @@ interface PricesResponse {
   timestamp: string;
 }
 
-export function useLivePrices() {
+export function useLivePrices(extraTickers: string[] = []) {
   return useQuery<PricesResponse>({
-    queryKey: ['live-prices'],
+    queryKey: ['live-prices', extraTickers],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('fetch-prices');
+      const { data, error } = await supabase.functions.invoke('fetch-prices', {
+        body: extraTickers.length > 0 ? { extraTickers } : undefined,
+      });
       if (error) throw error;
       return data as PricesResponse;
     },
