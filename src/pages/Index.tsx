@@ -18,6 +18,18 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
   const [manualCER, setManualCER] = useState('');
+  const { isAdvanced, activate, deactivate } = useAdvancedMode();
+
+  const handleAdvancedToggle = () => {
+    if (isAdvanced) {
+      deactivate();
+    } else {
+      const pwd = prompt('Ingresá la contraseña para activar el modo avanzado:');
+      if (pwd && !activate(pwd)) {
+        alert('Contraseña incorrecta');
+      }
+    }
+  };
   const { custom, addInstrument } = useCustomInstruments();
 
   const customTickers = custom.map(i => i.ticker);
