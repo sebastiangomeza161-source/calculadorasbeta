@@ -122,7 +122,18 @@ export default function Index() {
           <ShieldCheck className="w-3 h-3 text-accent" />
           <span className="text-[10px] text-accent font-mono uppercase tracking-wider">Modo avanzado activado</span>
         </div>
-      )}
+
+      <main className="max-w-6xl mx-auto p-4 md:p-6">
+        {/* Tabs */}
+        <div className="flex items-center gap-2 mb-5">
+          {(['LECAP', 'CER'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`tab-button ${activeTab === tab ? 'tab-button-active' : 'tab-button-inactive'}`}
+            >
+              {tab}
+            </button>
           ))}
         </div>
 
@@ -159,27 +170,29 @@ export default function Index() {
               )}
             </div>
 
-            {/* Manual CER fallback */}
-            <div className="terminal-card px-4 py-3 flex flex-wrap items-center gap-3">
-              <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap">
-                CER actual (manual)
-              </label>
-              <input
-                type="number"
-                value={manualCER}
-                onChange={(e) => setManualCER(e.target.value)}
-                placeholder="Ej: 732.60"
-                step="0.0001"
-                className="input-field w-40 text-xs py-1.5"
-              />
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {cerAvailable
-                  ? '· Se usa CER de BCRA (este campo es respaldo)'
-                  : manualCERValue && manualCERValue > 0
-                    ? '· ⚠ Usando CER manual para cálculos'
-                    : '· Ingresá un valor como respaldo si BCRA no responde'}
-              </span>
-            </div>
+            {/* Manual CER fallback - only in advanced mode */}
+            {isAdvanced && (
+              <div className="terminal-card px-4 py-3 flex flex-wrap items-center gap-3">
+                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap">
+                  CER actual (manual)
+                </label>
+                <input
+                  type="number"
+                  value={manualCER}
+                  onChange={(e) => setManualCER(e.target.value)}
+                  placeholder="Ej: 732.60"
+                  step="0.0001"
+                  className="input-field w-40 text-xs py-1.5"
+                />
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {cerAvailable
+                    ? '· Se usa CER de BCRA (este campo es respaldo)'
+                    : manualCERValue && manualCERValue > 0
+                      ? '· ⚠ Usando CER manual para cálculos'
+                      : '· Ingresá un valor como respaldo si BCRA no responde'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -189,14 +202,16 @@ export default function Index() {
             <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
               {activeTab} · {enriched.length} instrumentos
             </span>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-accent font-mono uppercase tracking-wider transition-colors"
-              title="Agregar instrumento"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Agregar
-            </button>
+            {isAdvanced && (
+              <button
+                onClick={() => setModalOpen(true)}
+                className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-accent font-mono uppercase tracking-wider transition-colors"
+                title="Agregar instrumento"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+            )}
           </div>
           <InstrumentTable instruments={enriched} lastCER={effectiveCER ?? undefined} />
         </div>
