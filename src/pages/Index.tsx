@@ -4,6 +4,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
+import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
@@ -14,6 +15,7 @@ import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 type TabType = 'LECAP' | 'CER';
 
 export default function Index() {
+  const { getEffectiveMaturity } = useMaturityOverrides();
   const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
@@ -47,11 +49,15 @@ export default function Index() {
   const instruments = activeTab === 'LECAP' ? allLecaps : allCer;
 
   const enriched = instruments
-    .map(inst => ({
-      ...inst,
-      marketPrice: livePrices?.prices[inst.ticker]?.price ?? 0,
-      change: livePrices?.prices[inst.ticker]?.change ?? null,
-    }))
+    .map(inst => {
+      const maturity = getEffectiveMaturity(inst.ticker, inst.maturityDate);
+      return {
+        ...inst,
+        maturityDate: maturity,
+        marketPrice: livePrices?.prices[inst.ticker]?.price ?? 0,
+        change: livePrices?.prices[inst.ticker]?.change ?? null,
+      };
+    })
     .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
 
   const curveData = useMemo(() => {

@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getInstrument } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
+import { useAdvancedMode } from '@/hooks/useAdvancedMode';
+import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
 
 export default function InstrumentDetail() {
   const { ticker } = useParams();
@@ -12,6 +14,8 @@ export default function InstrumentDetail() {
   const instrument = getInstrument(ticker || '');
   const { data: livePrices } = useLivePrices();
   const { data: cerData } = useCER();
+  const { isAdvanced } = useAdvancedMode();
+  const { getEffectiveMaturity, saveOverride } = useMaturityOverrides();
 
   const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
   const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
@@ -21,6 +25,12 @@ export default function InstrumentDetail() {
   const [commission, setCommission] = useState('0');
   const [manualCER, setManualCER] = useState('');
   const [cerAutoFilled, setCerAutoFilled] = useState(false);
+
+  // Maturity editing state
+  const [editingMaturity, setEditingMaturity] = useState(false);
+  const [maturityInput, setMaturityInput] = useState('');
+
+  const effectiveMaturity = instrument ? getEffectiveMaturity(instrument.ticker, instrument.maturityDate) : '';
 
   // Auto-fill CER from BCRA when available
   useEffect(() => {
@@ -43,19 +53,19 @@ export default function InstrumentDetail() {
     if (instrument.type === 'LECAP' && instrument.redemptionValue) {
       return {
         type: 'LECAP' as const,
-        ...calcLecap(activePrice, instrument.maturityDate, instrument.redemptionValue, activeTPlus, activeCommission)!,
+        ...calcLecap(activePrice, effectiveMaturity, instrument.redemptionValue, activeTPlus, activeCommission)!,
       };
     }
 
     if (instrument.type === 'CER' && instrument.cerInicial && activeCER > 0) {
       return {
         type: 'CER' as const,
-        ...calcCer(activePrice, instrument.maturityDate, instrument.cerInicial, activeCER, activeTPlus, activeCommission)!,
+        ...calcCer(activePrice, effectiveMaturity, instrument.cerInicial, activeCER, activeTPlus, activeCommission)!,
       };
     }
 
     return null;
-  }, [instrument, activePrice, activeTPlus, activeCommission, activeCER]);
+  }, [instrument, activePrice, activeTPlus, activeCommission, activeCER, effectiveMaturity]);
 
   if (!instrument) {
     return (
@@ -65,7 +75,24 @@ export default function InstrumentDetail() {
     );
   }
 
-  const days = daysUntil(instrument.maturityDate, activeTPlus);
+  const days = daysUntil(effectiveMaturity, activeTPlus);
+
+  const handleStartEdit = () => {
+    setMaturityInput(effectiveMaturity);
+    setEditingMaturity(true);
+  };
+
+  const handleSaveMaturity = () => {
+    if (maturityInput && maturityInput !== effectiveMaturity) {
+      saveOverride.mutate({ ticker: instrument.ticker, maturityDate: maturityInput });
+    }
+    setEditingMaturity(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMaturity(false);
+    setMaturityInput('');
+  };
 
   return (
     <div className="min-h-screen">
@@ -97,7 +124,36 @@ export default function InstrumentDetail() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <InfoCell label="Vencimiento" value={formatDate(instrument.maturityDate)} />
+            <div>
+              <span className="text-muted-foreground block mb-1 text-[10px] font-mono uppercase tracking-wider">Vencimiento</span>
+              <div className="flex items-center gap-1.5">
+                {editingMaturity ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="date"
+                      value={maturityInput}
+                      onChange={(e) => setMaturityInput(e.target.value)}
+                      className="input-field text-xs py-0.5 px-1.5 w-36"
+                    />
+                    <button onClick={handleSaveMaturity} className="text-positive hover:opacity-80" title="Guardar">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={handleCancelEdit} className="text-destructive hover:opacity-80" title="Cancelar">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-mono text-sm font-medium">{formatDate(effectiveMaturity)}</span>
+                    {isAdvanced && (
+                      <button onClick={handleStartEdit} className="text-muted-foreground hover:text-foreground transition-colors" title="Editar vencimiento">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
             <InfoCell label="Días al vto" value={String(days)} />
             <InfoCell label="Duration" value={`${(days / 365).toFixed(2)}y`} />
             <InfoCell
@@ -203,7 +259,6 @@ export default function InstrumentDetail() {
             )}
           </div>
 
-          {/* Error state */}
           {activePrice <= 0 && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-md px-4 py-3 text-xs text-destructive">
               Ingresá un precio válido para calcular las métricas.
@@ -216,7 +271,6 @@ export default function InstrumentDetail() {
             </div>
           )}
 
-          {/* Results */}
           {result && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-5">
               {result.type === 'LECAP' ? (
