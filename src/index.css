@@ -47,6 +47,8 @@
     --sidebar-accent-foreground: 40 10% 90%;
     --sidebar-border: 220 15% 18%;
     --sidebar-ring: 35 95% 55%;
+
+    --ticker: 35 95% 55%;
   }
 
   .theme-day {
@@ -89,6 +91,8 @@
     --sidebar-accent-foreground: 215 35% 18%;
     --sidebar-border: 220 15% 88%;
     --sidebar-ring: 207 70% 45%;
+
+    --ticker: 195 50% 28%;
   }
 }
 
