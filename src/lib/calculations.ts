@@ -29,13 +29,25 @@ export function daysUntil(maturityDate: string, tPlus: number = 1): number {
 // --- DAYS360 (US/NASD method) ---
 
 function days360(start: Date, end: Date): number {
-  let d1 = Math.min(start.getDate(), 30);
+  let d1 = start.getDate();
   let d2 = end.getDate();
-  if (d1 === 30 && d2 === 31) d2 = 30;
   const m1 = start.getMonth();
   const m2 = end.getMonth();
   const y1 = start.getFullYear();
   const y2 = end.getFullYear();
+
+  // US/NASD 30/360 convention (matches Excel DIAS360)
+  if (d1 === 31) d1 = 30;
+  if (d2 === 31 && d1 >= 30) d2 = 30;
+
+  // Handle Feb end-of-month
+  const lastDayFeb1 = new Date(y1, m1 + 1, 0).getDate();
+  if (m1 === 1 && d1 === lastDayFeb1) {
+    d1 = 30;
+    const lastDayFeb2 = new Date(y2, m2 + 1, 0).getDate();
+    if (m2 === 1 && d2 === lastDayFeb2) d2 = 30;
+  }
+
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
 }
 
