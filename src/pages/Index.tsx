@@ -3,11 +3,12 @@ import { LECAPS, CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
+import { useTheme } from '@/hooks/useTheme';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
-import { Plus } from 'lucide-react';
+import { Plus, Moon, Sun } from 'lucide-react';
 
 type TabType = 'LECAP' | 'CER';
 
