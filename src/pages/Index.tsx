@@ -122,6 +122,7 @@ export default function Index() {
           <ShieldCheck className="w-3 h-3 text-accent" />
           <span className="text-[10px] text-accent font-mono uppercase tracking-wider">Modo avanzado activado</span>
         </div>
+      )}
 
       <main className="max-w-6xl mx-auto p-4 md:p-6">
         {/* Tabs */}
