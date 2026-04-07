@@ -11,7 +11,19 @@ export interface Instrument {
 }
 
 export function getInstrument(ticker: string): Instrument | undefined {
-  return [...LECAPS, ...CER_INSTRUMENTS].find(i => i.ticker === ticker);
+  // Check hardcoded instruments first
+  const found = [...LECAPS, ...CER_INSTRUMENTS].find(i => i.ticker === ticker);
+  if (found) return found;
+
+  // Check custom instruments from localStorage
+  try {
+    const raw = localStorage.getItem('custom-instruments');
+    if (raw) {
+      const custom: Instrument[] = JSON.parse(raw);
+      return custom.find(i => i.ticker === ticker);
+    }
+  } catch {}
+  return undefined;
 }
 
 export function getAllTickers(): string[] {
