@@ -8,7 +8,8 @@ import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
-import { Plus, Moon, Sun } from 'lucide-react';
+import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck } from 'lucide-react';
+import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 
 type TabType = 'LECAP' | 'CER';
 
@@ -17,6 +18,18 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
   const [manualCER, setManualCER] = useState('');
+  const { isAdvanced, activate, deactivate } = useAdvancedMode();
+
+  const handleAdvancedToggle = () => {
+    if (isAdvanced) {
+      deactivate();
+    } else {
+      const pwd = prompt('Ingresá la contraseña para activar el modo avanzado:');
+      if (pwd && !activate(pwd)) {
+        alert('Contraseña incorrecta');
+      }
+    }
+  };
   const { custom, addInstrument } = useCustomInstruments();
 
   const customTickers = custom.map(i => i.ticker);
@@ -93,8 +106,23 @@ export default function Index() {
             {theme === 'night' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
             {theme === 'night' ? 'Día' : 'Noche'}
           </button>
+          <button
+            onClick={handleAdvancedToggle}
+            className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+            title={isAdvanced ? 'Desactivar modo avanzado' : 'Activar modo avanzado'}
+          >
+            {isAdvanced ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+            {isAdvanced ? 'Avanzado' : 'Básico'}
+          </button>
         </div>
       </header>
+
+      {isAdvanced && (
+        <div className="bg-accent/10 border-b border-accent/20 px-4 md:px-8 py-1.5 flex items-center gap-2">
+          <ShieldCheck className="w-3 h-3 text-accent" />
+          <span className="text-[10px] text-accent font-mono uppercase tracking-wider">Modo avanzado activado</span>
+        </div>
+      )}
 
       <main className="max-w-6xl mx-auto p-4 md:p-6">
         {/* Tabs */}
@@ -143,27 +171,29 @@ export default function Index() {
               )}
             </div>
 
-            {/* Manual CER fallback */}
-            <div className="terminal-card px-4 py-3 flex flex-wrap items-center gap-3">
-              <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap">
-                CER actual (manual)
-              </label>
-              <input
-                type="number"
-                value={manualCER}
-                onChange={(e) => setManualCER(e.target.value)}
-                placeholder="Ej: 732.60"
-                step="0.0001"
-                className="input-field w-40 text-xs py-1.5"
-              />
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {cerAvailable
-                  ? '· Se usa CER de BCRA (este campo es respaldo)'
-                  : manualCERValue && manualCERValue > 0
-                    ? '· ⚠ Usando CER manual para cálculos'
-                    : '· Ingresá un valor como respaldo si BCRA no responde'}
-              </span>
-            </div>
+            {/* Manual CER fallback - only in advanced mode */}
+            {isAdvanced && (
+              <div className="terminal-card px-4 py-3 flex flex-wrap items-center gap-3">
+                <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider whitespace-nowrap">
+                  CER actual (manual)
+                </label>
+                <input
+                  type="number"
+                  value={manualCER}
+                  onChange={(e) => setManualCER(e.target.value)}
+                  placeholder="Ej: 732.60"
+                  step="0.0001"
+                  className="input-field w-40 text-xs py-1.5"
+                />
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {cerAvailable
+                    ? '· Se usa CER de BCRA (este campo es respaldo)'
+                    : manualCERValue && manualCERValue > 0
+                      ? '· ⚠ Usando CER manual para cálculos'
+                      : '· Ingresá un valor como respaldo si BCRA no responde'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -173,14 +203,16 @@ export default function Index() {
             <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
               {activeTab} · {enriched.length} instrumentos
             </span>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-accent font-mono uppercase tracking-wider transition-colors"
-              title="Agregar instrumento"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Agregar
-            </button>
+            {isAdvanced && (
+              <button
+                onClick={() => setModalOpen(true)}
+                className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-accent font-mono uppercase tracking-wider transition-colors"
+                title="Agregar instrumento"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+            )}
           </div>
           <InstrumentTable instruments={enriched} lastCER={effectiveCER ?? undefined} />
         </div>
