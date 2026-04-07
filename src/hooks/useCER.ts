@@ -2,8 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CERResponse {
-  cer: number | null;
-  date: string | null;
+  cer: number | null;       // CER con rezago de 10 días hábiles (para cálculos)
+  cerDate: string | null;   // Fecha efectiva del CER usado
+  latestCer: number | null; // CER más reciente disponible
+  latestDate: string | null;
+  lagDays: number;
   source: string;
   error?: string;
 }
@@ -16,7 +19,7 @@ export function useCER() {
       if (error) throw error;
       return data as CERResponse;
     },
-    staleTime: 5 * 60_000, // 5 min
-    refetchInterval: 10 * 60_000, // 10 min
+    staleTime: 5 * 60_000,
+    refetchInterval: 10 * 60_000,
   });
 }
