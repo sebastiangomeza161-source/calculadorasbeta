@@ -19,15 +19,16 @@ interface Props {
 
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]) return null;
-  const d = payload[0].payload as DataPoint;
+  const d = payload[0].payload;
+  if (!d?.ticker) return null; // skip trend line points
   return (
     <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg">
       <div className="text-accent font-semibold mb-1">{d.ticker}</div>
       <div className="space-y-0.5 text-muted-foreground">
-        <div>Precio: <span className="text-foreground">${d.price.toFixed(2)}</span></div>
-        <div>Días: <span className="text-foreground">{d.days}</span></div>
-        <div>Duration: <span className="text-foreground">{d.duration.toFixed(2)}</span></div>
-        <div>Yield: <span className="text-foreground">{d.yield.toFixed(2)}%</span></div>
+        <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
+        <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
+        <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
+        <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
       </div>
     </div>
   );
