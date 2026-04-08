@@ -19,21 +19,35 @@ interface Props {
 }
 
 function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.[0]) return null;
-  const d = payload[0].payload;
-  if (!d?.ticker) return null;
+  if (!active || !payload?.length) return null;
+  // Deduplicate: show each unique point (market vs manual) separately
+  const seen = new Set<string>();
+  const items: DataPoint[] = [];
+  for (const entry of payload) {
+    const d = entry?.payload;
+    if (!d?.ticker) continue;
+    const key = `${d.ticker}-${d.isManual ? 'manual' : 'market'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(d);
+  }
+  if (items.length === 0) return null;
   return (
-    <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg">
-      <div className="text-accent font-semibold mb-1">
-        {d.ticker}
-        {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
-      </div>
-      <div className="space-y-0.5 text-muted-foreground">
-        <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
-        <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
-        <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
-        <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
-      </div>
+    <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg space-y-2">
+      {items.map((d, i) => (
+        <div key={i}>
+          <div className="text-accent font-semibold mb-1">
+            {d.ticker}
+            {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
+          </div>
+          <div className="space-y-0.5 text-muted-foreground">
+            <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
+            <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
+            <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
+            <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
