@@ -148,6 +148,14 @@ export default function Index() {
             {theme === 'night' ? 'Día' : 'Noche'}
           </button>
           <button
+            onClick={() => navigate('/comision')}
+            className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+            title="Vista Comisión"
+          >
+            <Calculator className="w-3 h-3" />
+            Comisión
+          </button>
+          <button
             onClick={handleAdvancedToggle}
             className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
             title={isAdvanced ? 'Desactivar modo avanzado' : 'Activar modo avanzado'}
