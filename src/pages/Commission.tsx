@@ -298,11 +298,12 @@ export default function Commission() {
                     <th className={thClass}>Días</th>
                     <th className={thClass}>Vto</th>
                     <th className={thClass}>TNA 180</th>
+                    <th className={thClass}>TEA / TIR</th>
                     <th className={thClass}>Comisión (s/TNA)</th>
                     <th className={thClass}>TNA c/com</th>
                     <th className={thClass}>Precio c/com</th>
                     <th className={thClass}>Com. directa</th>
-                    <th className={thClass}>TEA</th>
+                    <th className={thClass}>TEA c/com</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -322,6 +323,7 @@ export default function Commission() {
                         <td className={tdClass}>{r ? r.days : '—'}</td>
                         <td className={`${tdClass} text-muted-foreground`}>{formatDate(inst.maturityDate)}</td>
                         <td className={tdClass}>{r ? formatPct(r.tna180 * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.teaBase * 100) : '—'}</td>
                         <td className="py-1 px-2 text-right">
                           <input type="number" value={comVal} onChange={e => setCommission(inst.ticker, e.target.value)} placeholder="0" step="0.01"
                             className="w-16 bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-right text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/60 transition-colors" />
@@ -329,7 +331,7 @@ export default function Commission() {
                         <td className={tdClass}>{r ? formatPct(r.tnaComision * 100) : '—'}</td>
                         <td className={tdClass}>{r ? `$${r.precioComision.toFixed(3)}` : '—'}</td>
                         <td className={tdClass}>{r ? formatPct(r.comisionDirecta * 100) : '—'}</td>
-                        <td className={tdClass}>{r ? formatPct(r.tea * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.teaCom * 100) : '—'}</td>
                       </tr>
                     );
                   })}
