@@ -229,7 +229,7 @@ export default function Commission() {
                     <th className={thClass}>TNA</th>
                     <th className={thClass}>TEA</th>
                     <th className={thClass}>TEM</th>
-                    <th className={thClass}>Comisión</th>
+                    <th className={thClass}>Comisión (s/TNA)</th>
                     <th className={thClass}>TNA c/com</th>
                     <th className={thClass}>Precio c/com</th>
                     <th className={thClass}>Com. directa</th>
