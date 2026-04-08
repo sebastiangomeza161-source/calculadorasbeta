@@ -10,6 +10,7 @@ interface DataPoint {
   days: number;
   duration: number;
   yield: number;
+  isManual?: boolean;
 }
 
 interface Props {
@@ -20,10 +21,13 @@ interface Props {
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
-  if (!d?.ticker) return null; // skip trend line points
+  if (!d?.ticker) return null;
   return (
     <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg">
-      <div className="text-accent font-semibold mb-1">{d.ticker}</div>
+      <div className="text-accent font-semibold mb-1">
+        {d.ticker}
+        {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
+      </div>
       <div className="space-y-0.5 text-muted-foreground">
         <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
         <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
@@ -64,12 +68,13 @@ function logTrendLine(points: DataPoint[], steps = 50): { duration: number; yiel
 }
 
 export default function YieldCurve({ data, yLabel }: Props) {
-  const sorted = useMemo(() => [...data].sort((a, b) => a.duration - b.duration), [data]);
-  const trend = useMemo(() => logTrendLine(sorted), [sorted]);
+  const marketPoints = useMemo(() => data.filter(d => !d.isManual).sort((a, b) => a.duration - b.duration), [data]);
+  const manualPoints = useMemo(() => data.filter(d => d.isManual).sort((a, b) => a.duration - b.duration), [data]);
+  const trend = useMemo(() => logTrendLine(marketPoints), [marketPoints]);
 
-  if (sorted.length === 0) return null;
+  if (data.length === 0) return null;
 
-  const allYields = [...sorted.map(d => d.yield), ...trend.map(d => d.yield)];
+  const allYields = [...data.map(d => d.yield), ...trend.map(d => d.yield)];
   const yMin = Math.floor(Math.min(...allYields) - 2);
   const yMax = Math.ceil(Math.max(...allYields) + 2);
 
@@ -111,7 +116,7 @@ export default function YieldCurve({ data, yLabel }: Props) {
             }}
           />
           <Tooltip content={<CustomTooltip />} />
-          {/* Trend line */}
+          {/* Trend line - only market points */}
           {trend.length > 0 && (
             <Line
               data={trend}
@@ -124,16 +129,38 @@ export default function YieldCurve({ data, yLabel }: Props) {
               name="Tendencia"
             />
           )}
-          {/* Data points */}
+          {/* Market data points */}
           <Scatter
-            data={sorted}
+            data={marketPoints}
             fill="hsl(35 95% 55%)"
             strokeWidth={0}
-            // @ts-ignore - recharts accepts r prop
+            // @ts-ignore
             r={5}
           />
+          {/* Manual price points - distinct color */}
+          {manualPoints.length > 0 && (
+            <Scatter
+              data={manualPoints}
+              fill="hsl(200 80% 55%)"
+              strokeWidth={1}
+              stroke="hsl(200 80% 70%)"
+              // @ts-ignore
+              r={6}
+              name="Manual"
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
+      {manualPoints.length > 0 && (
+        <div className="flex items-center gap-4 mt-2 text-[9px] text-muted-foreground font-mono">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: 'hsl(35 95% 55%)' }} /> Mercado
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-full" style={{ background: 'hsl(200 80% 55%)' }} /> Manual
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,14 +5,17 @@ import { daysUntil, calcLecap, calcCer, formatPercent } from '@/lib/calculations
 interface EnrichedInstrument extends Instrument {
   marketPrice?: number;
   change?: number | null;
+  hasManualPrice?: boolean;
 }
 
 interface InstrumentTableProps {
   instruments: EnrichedInstrument[];
   lastCER?: number;
+  manualPrices: Record<string, string>;
+  onManualPriceChange: (ticker: string, value: string) => void;
 }
 
-export default function InstrumentTable({ instruments, lastCER }: InstrumentTableProps) {
+export default function InstrumentTable({ instruments, lastCER, manualPrices, onManualPriceChange }: InstrumentTableProps) {
   const navigate = useNavigate();
   const isLecap = instruments[0]?.type === 'LECAP';
 
@@ -25,6 +28,7 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
             <th className="text-right py-3 px-4">Vto</th>
             <th className="text-right py-3 px-4">Días</th>
             <th className="text-right py-3 px-4">Precio</th>
+            <th className="text-right py-3 px-4">Manual</th>
             <th className="text-right py-3 px-4">Var %</th>
             {isLecap ? (
               <>
@@ -69,13 +73,17 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
             const [y, m, d] = inst.maturityDate.split('-').map(Number);
             const maturityShort = new Date(y, m - 1, d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 
+            const manualVal = manualPrices[inst.ticker] ?? '';
+
             return (
               <tr
                 key={inst.ticker}
                 className="table-row-hover border-b border-border/30"
-                onClick={() => navigate(`/instrument/${inst.ticker}`)}
               >
-                <td className="py-3 px-4 font-mono text-xs font-semibold text-ticker">
+                <td
+                  className="py-3 px-4 font-mono text-xs font-semibold text-ticker cursor-pointer"
+                  onClick={() => navigate(`/instrument/${inst.ticker}`)}
+                >
                   {inst.ticker}
                 </td>
                 <td className="py-3 px-4 font-mono text-xs text-right text-muted-foreground">
@@ -86,6 +94,16 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
                 </td>
                 <td className="py-3 px-4 font-mono text-xs text-right font-medium">
                   {price > 0 ? `$${price.toFixed(2)}` : '—'}
+                </td>
+                <td className="py-1 px-2 text-right" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="number"
+                    value={manualVal}
+                    onChange={(e) => onManualPriceChange(inst.ticker, e.target.value)}
+                    placeholder="—"
+                    step="0.01"
+                    className="w-20 bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-right text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/60 transition-colors"
+                  />
                 </td>
                 <td className={`py-3 px-4 font-mono text-xs text-right font-semibold ${
                   inst.change != null && inst.change > 0 ? 'price-positive' :
@@ -104,7 +122,10 @@ export default function InstrumentTable({ instruments, lastCER }: InstrumentTabl
                     {secondary2}
                   </td>
                 )}
-                <td className="py-3 px-4 text-right text-muted-foreground">
+                <td
+                  className="py-3 px-4 text-right text-muted-foreground cursor-pointer"
+                  onClick={() => navigate(`/instrument/${inst.ticker}`)}
+                >
                   <span className="text-xs">→</span>
                 </td>
               </tr>
