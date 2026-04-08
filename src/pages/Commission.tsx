@@ -117,9 +117,11 @@ export default function Commission() {
     const pago = inst.redemptionValue ?? 0;
     if (days <= 0 || price <= 0 || pago <= 0) return null;
 
-    const duration = days / 365;
     const totalReturn = pago / price - 1;
     const tna = totalReturn * 365 / days;
+    const tea = Math.pow(1 + tna * days / 365, 365 / days) - 1;
+    const tem = Math.pow(1 + tea, 30 / 365) - 1;
+
     const comStr = commissions[inst.ticker];
     const comVal = comStr ? parseFloat(comStr) : 0;
     const commission = !isNaN(comVal) ? comVal / 100 : 0;
@@ -127,10 +129,10 @@ export default function Commission() {
     const tnaComision = tna - commission;
     const precioComision = Math.round((pago / (1 + tnaComision * days / 365)) * 1000) / 1000;
     const comisionDirecta = precioComision / price - 1;
-    const tea = Math.pow(1 + tnaComision * days / 365, 365 / days) - 1;
-    const tem = Math.pow(1 + tea, 30 / 365) - 1;
+    const teaCom = Math.pow(1 + tnaComision * days / 365, 365 / days) - 1;
+    const temCom = Math.pow(1 + teaCom, 30 / 365) - 1;
 
-    return { days, duration, totalReturn, tna, commission, tnaComision, precioComision, comisionDirecta, tea, tem, pago };
+    return { days, tna, tea, tem, commission, tnaComision, precioComision, comisionDirecta, teaCom, temCom, pago };
   }
 
   // CER commission row
@@ -221,20 +223,18 @@ export default function Commission() {
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Ticker</th>
                     <th className={thClass}>Precio</th>
                     <th className={thClass}>Manual</th>
-                    <th className={thClass}>Cupón</th>
                     <th className={thClass}>Días</th>
-                    <th className={thClass}>Duration</th>
-                    <th className={thClass}>Emisión</th>
                     <th className={thClass}>Vto</th>
                     <th className={thClass}>Pago</th>
-                    <th className={thClass}>Total Return</th>
                     <th className={thClass}>TNA</th>
+                    <th className={thClass}>TEA</th>
+                    <th className={thClass}>TEM</th>
                     <th className={thClass}>Comisión</th>
                     <th className={thClass}>TNA c/com</th>
                     <th className={thClass}>Precio c/com</th>
                     <th className={thClass}>Com. directa</th>
-                    <th className={thClass}>TEA</th>
-                    <th className={thClass}>TEM</th>
+                    <th className={thClass}>TEA c/com</th>
+                    <th className={thClass}>TEM c/com</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,14 +250,12 @@ export default function Commission() {
                           <input type="number" value={manualVal} onChange={e => setManualPrice(inst.ticker, e.target.value)} placeholder="—" step="0.01"
                             className="w-20 bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-right text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/60 transition-colors" />
                         </td>
-                        <td className={tdClass}>—</td>
                         <td className={tdClass}>{r ? r.days : '—'}</td>
-                        <td className={tdClass}>{r ? r.duration.toFixed(4) : '—'}</td>
-                        <td className={`${tdClass} text-muted-foreground`}>{formatDate(inst.emissionDate)}</td>
                         <td className={`${tdClass} text-muted-foreground`}>{formatDate(inst.maturityDate)}</td>
                         <td className={tdClass}>{r ? r.pago.toFixed(3) : '—'}</td>
-                        <td className={tdClass}>{r ? formatPct(r.totalReturn * 100) : '—'}</td>
                         <td className={tdClass}>{r ? formatPct(r.tna * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.tea * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.tem * 100) : '—'}</td>
                         <td className="py-1 px-2 text-right">
                           <input type="number" value={comVal} onChange={e => setCommission(inst.ticker, e.target.value)} placeholder="0" step="0.01"
                             className="w-16 bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-right text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/60 transition-colors" />
@@ -265,8 +263,8 @@ export default function Commission() {
                         <td className={tdClass}>{r ? formatPct(r.tnaComision * 100) : '—'}</td>
                         <td className={tdClass}>{r ? `$${r.precioComision.toFixed(3)}` : '—'}</td>
                         <td className={tdClass}>{r ? formatPct(r.comisionDirecta * 100) : '—'}</td>
-                        <td className={tdClass}>{r ? formatPct(r.tea * 100) : '—'}</td>
-                        <td className={tdClass}>{r ? formatPct(r.tem * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.teaCom * 100) : '—'}</td>
+                        <td className={tdClass}>{r ? formatPct(r.temCom * 100) : '—'}</td>
                       </tr>
                     );
                   })}
@@ -292,14 +290,11 @@ export default function Commission() {
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Ticker</th>
                     <th className={thClass}>Precio</th>
                     <th className={thClass}>Manual</th>
-                    <th className={thClass}>CER ini</th>
                     <th className={thClass}>Últ CER</th>
                     <th className={thClass}>Días</th>
-                    <th className={thClass}>Duration</th>
-                    <th className={thClass}>Emisión</th>
                     <th className={thClass}>Vto</th>
                     <th className={thClass}>TNA 180</th>
-                    <th className={thClass}>Comisión</th>
+                    <th className={thClass}>Comisión (s/TNA)</th>
                     <th className={thClass}>TNA c/com</th>
                     <th className={thClass}>Precio c/com</th>
                     <th className={thClass}>Com. directa</th>
@@ -319,11 +314,8 @@ export default function Commission() {
                           <input type="number" value={manualVal} onChange={e => setManualPrice(inst.ticker, e.target.value)} placeholder="—" step="0.01"
                             className="w-20 bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-right text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/60 transition-colors" />
                         </td>
-                        <td className={tdClass}>{inst.cerInicial?.toFixed(4) ?? '—'}</td>
                         <td className={tdClass}>{effectiveCER?.toFixed(4) ?? '—'}</td>
                         <td className={tdClass}>{r ? r.days : '—'}</td>
-                        <td className={tdClass}>{r ? r.duration.toFixed(4) : '—'}</td>
-                        <td className={`${tdClass} text-muted-foreground`}>{formatDate(inst.emissionDate)}</td>
                         <td className={`${tdClass} text-muted-foreground`}>{formatDate(inst.maturityDate)}</td>
                         <td className={tdClass}>{r ? formatPct(r.tna180 * 100) : '—'}</td>
                         <td className="py-1 px-2 text-right">
