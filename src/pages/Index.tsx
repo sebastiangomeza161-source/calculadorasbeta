@@ -87,31 +87,45 @@ export default function Index() {
     .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
 
   const curveData = useMemo(() => {
-    return enriched
-      .filter(inst => inst.marketPrice > 0)
-      .map(inst => {
-        const days = daysUntil(inst.maturityDate);
-        const duration = days / 360;
-        let yieldVal = 0;
+    const points: { ticker: string; price: number; days: number; duration: number; yield: number; isManual?: boolean }[] = [];
 
+    for (const inst of enriched) {
+      const days = daysUntil(inst.maturityDate);
+      const duration = days / 360;
+
+      // Always add market point if original market price exists
+      const origPrice = inst.originalMarketPrice;
+      if (origPrice > 0) {
+        let yieldMarket = 0;
+        if (activeTab === 'LECAP' && inst.redemptionValue) {
+          const r = calcLecap(origPrice, inst.maturityDate, inst.redemptionValue);
+          if (r) yieldMarket = r.tna;
+        } else if (activeTab === 'CER' && inst.cerInicial && effectiveCER) {
+          const r = calcCer(origPrice, inst.maturityDate, inst.cerInicial, effectiveCER);
+          if (r) yieldMarket = r.tna180;
+        }
+        if (yieldMarket !== 0) {
+          points.push({ ticker: inst.ticker, price: origPrice, days, duration, yield: yieldMarket, isManual: false });
+        }
+      }
+
+      // Add manual point separately if manual price exists
+      if (inst.hasManualPrice) {
+        let yieldManual = 0;
         if (activeTab === 'LECAP' && inst.redemptionValue) {
           const r = calcLecap(inst.marketPrice, inst.maturityDate, inst.redemptionValue);
-          if (r) yieldVal = r.tna;
+          if (r) yieldManual = r.tna;
         } else if (activeTab === 'CER' && inst.cerInicial && effectiveCER) {
           const r = calcCer(inst.marketPrice, inst.maturityDate, inst.cerInicial, effectiveCER);
-          if (r) yieldVal = r.tna180;
+          if (r) yieldManual = r.tna180;
         }
+        if (yieldManual !== 0) {
+          points.push({ ticker: inst.ticker, price: inst.marketPrice, days, duration, yield: yieldManual, isManual: true });
+        }
+      }
+    }
 
-        return {
-          ticker: inst.ticker,
-          price: inst.marketPrice,
-          days,
-          duration,
-          yield: yieldVal,
-          isManual: inst.hasManualPrice,
-        };
-      })
-      .filter(d => d.yield !== 0);
+    return points;
   }, [enriched, activeTab, effectiveCER]);
 
   const timestamp = livePrices?.timestamp
