@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import InstrumentDetail from "./pages/InstrumentDetail";
+import Commission from "./pages/Commission";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/instrument/:ticker" element={<InstrumentDetail />} />
+          <Route path="/comision" element={<Commission />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
