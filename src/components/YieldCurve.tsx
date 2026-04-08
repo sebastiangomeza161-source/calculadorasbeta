@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Line, ComposedChart,
+  CartesianGrid, Line, ComposedChart, Cell,
 } from 'recharts';
 
 interface DataPoint {
@@ -18,36 +18,22 @@ interface Props {
   yLabel: string;
 }
 
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  // Deduplicate: show each unique point (market vs manual) separately
-  const seen = new Set<string>();
-  const items: DataPoint[] = [];
-  for (const entry of payload) {
-    const d = entry?.payload;
-    if (!d?.ticker) continue;
-    const key = `${d.ticker}-${d.isManual ? 'manual' : 'market'}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    items.push(d);
-  }
-  if (items.length === 0) return null;
+function CustomTooltip({ active, payload, hoveredPoint }: any) {
+  // Use the explicitly hovered point if available
+  const d = hoveredPoint || (active && payload?.[0]?.payload);
+  if (!d?.ticker) return null;
   return (
-    <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg space-y-2">
-      {items.map((d, i) => (
-        <div key={i}>
-          <div className="text-accent font-semibold mb-1">
-            {d.ticker}
-            {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
-          </div>
-          <div className="space-y-0.5 text-muted-foreground">
-            <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
-            <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
-            <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
-            <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
-          </div>
-        </div>
-      ))}
+    <div className="bg-card border border-border rounded-md px-3 py-2 text-xs font-mono shadow-lg">
+      <div className="font-semibold mb-1" style={{ color: d.isManual ? 'hsl(200 80% 55%)' : 'hsl(35 95% 55%)' }}>
+        {d.ticker}
+        {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
+      </div>
+      <div className="space-y-0.5 text-muted-foreground">
+        <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
+        <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
+        <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
+        <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
+      </div>
     </div>
   );
 }
@@ -81,10 +67,50 @@ function logTrendLine(points: DataPoint[], steps = 50): { duration: number; yiel
   });
 }
 
+function MarketDot(props: any) {
+  const { cx, cy, onDotEnter, onDotLeave, payload } = props;
+  if (cx == null || cy == null) return null;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={5}
+      fill="hsl(35 95% 55%)"
+      stroke="none"
+      style={{ cursor: 'pointer' }}
+      onMouseEnter={() => onDotEnter?.(payload)}
+      onMouseLeave={() => onDotLeave?.()}
+    />
+  );
+}
+
+function ManualDot(props: any) {
+  const { cx, cy, onDotEnter, onDotLeave, payload } = props;
+  if (cx == null || cy == null) return null;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={6}
+      fill="hsl(200 80% 55%)"
+      stroke="hsl(200 80% 70%)"
+      strokeWidth={1}
+      style={{ cursor: 'pointer' }}
+      onMouseEnter={() => onDotEnter?.(payload)}
+      onMouseLeave={() => onDotLeave?.()}
+    />
+  );
+}
+
 export default function YieldCurve({ data, yLabel }: Props) {
+  const [hoveredPoint, setHoveredPoint] = useState<DataPoint | null>(null);
+
   const marketPoints = useMemo(() => data.filter(d => !d.isManual).sort((a, b) => a.duration - b.duration), [data]);
   const manualPoints = useMemo(() => data.filter(d => d.isManual).sort((a, b) => a.duration - b.duration), [data]);
   const trend = useMemo(() => logTrendLine(marketPoints), [marketPoints]);
+
+  const handleDotEnter = useCallback((point: DataPoint) => setHoveredPoint(point), []);
+  const handleDotLeave = useCallback(() => setHoveredPoint(null), []);
 
   if (data.length === 0) return null;
 
@@ -129,7 +155,11 @@ export default function YieldCurve({ data, yLabel }: Props) {
               style: { fontSize: 9, fill: 'hsl(220 10% 50%)' },
             }}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip
+            content={<CustomTooltip hoveredPoint={hoveredPoint} />}
+            active={!!hoveredPoint}
+            position={undefined}
+          />
           {/* Trend line - only market points */}
           {trend.length > 0 && (
             <Line
@@ -143,26 +173,21 @@ export default function YieldCurve({ data, yLabel }: Props) {
               name="Tendencia"
             />
           )}
-          {/* Market data points */}
-          <Scatter
-            data={marketPoints}
-            fill="hsl(35 95% 55%)"
-            strokeWidth={0}
-            // @ts-ignore
-            r={5}
-          />
-          {/* Manual price points - distinct color */}
+          {/* Manual price points - render first so market dots are on top */}
           {manualPoints.length > 0 && (
             <Scatter
               data={manualPoints}
               fill="hsl(200 80% 55%)"
-              strokeWidth={1}
-              stroke="hsl(200 80% 70%)"
-              // @ts-ignore
-              r={6}
               name="Manual"
+              shape={<ManualDot onDotEnter={handleDotEnter} onDotLeave={handleDotLeave} />}
             />
           )}
+          {/* Market data points - on top */}
+          <Scatter
+            data={marketPoints}
+            fill="hsl(35 95% 55%)"
+            shape={<MarketDot onDotEnter={handleDotEnter} onDotLeave={handleDotLeave} />}
+          />
         </ComposedChart>
       </ResponsiveContainer>
       {manualPoints.length > 0 && (
