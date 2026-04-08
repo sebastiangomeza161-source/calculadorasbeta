@@ -9,7 +9,7 @@ import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
-import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck, Calculator } from 'lucide-react';
+import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck, Calculator, FlaskConical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 
@@ -169,6 +169,16 @@ export default function Index() {
             <Calculator className="w-3 h-3" />
             Comisión
           </button>
+          {isAdvanced && (
+            <button
+              onClick={() => navigate('/experimental')}
+              className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+              title="Vista Experimental"
+            >
+              <FlaskConical className="w-3 h-3" />
+              Experimental
+            </button>
+          )}
           <button
             onClick={handleAdvancedToggle}
             className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
