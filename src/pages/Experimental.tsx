@@ -261,7 +261,7 @@ function ProjectedCurveTooltip({ hoveredPoint }: { hoveredPoint: CurvePoint | nu
     <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
       <p className="font-semibold text-accent">{hoveredPoint.ticker}</p>
       <p className="text-muted-foreground">Duration: {hoveredPoint.duration.toFixed(2)}</p>
-      <p className="text-foreground">TNA 180: {hoveredPoint.yield.toFixed(2)}%</p>
+      <p className="text-foreground">TNA Proy.: {hoveredPoint.yield.toFixed(2)}%</p>
     </div>
   );
 }
@@ -363,9 +363,9 @@ export default function Experimental() {
       const precioRelativo = inst.price / 100;
       const ratio = adjustedFace / inst.price;
       const retornoAcumulado = ratio - 1;
-      const tna180 = inst.d360 > 0 ? (Math.pow(ratio, 180 / inst.d360) - 1) * 2 * 100 : 0;
+      const tnaProj = inst.days > 0 ? retornoAcumulado * 365 / inst.days * 100 : 0;
       return {
-        ...inst, projectedCER, tna180Proj: tna180,
+        ...inst, projectedCER, tnaProj,
         cerInicial, factorCER, precioRelativo, adjustedFace, ratio, retornoAcumulado,
       };
     });
@@ -373,8 +373,8 @@ export default function Experimental() {
 
   const curvePoints = useMemo<CurvePoint[]>(() => {
     return projectedRows
-      .filter(r => r.tna180Proj !== null)
-      .map(r => ({ ticker: r.ticker, duration: r.duration, yield: r.tna180Proj! }));
+      .filter(r => r.tnaProj !== null && r.tnaProj !== undefined)
+      .map(r => ({ ticker: r.ticker, duration: r.duration, yield: r.tnaProj! }));
   }, [projectedRows]);
 
   const trendLine = useMemo(() => calcLogTrend(curvePoints), [curvePoints]);
@@ -676,7 +676,7 @@ export default function Experimental() {
                     <th className={thClass}>CER Inicial</th>
                     <th className={thClass}>CER Proy.</th>
                     <th className={thClass}>Días</th>
-                    <th className={thClass}>TNA 180 Proy.</th>
+                    <th className={thClass}>TNA Proy.</th>
                     <th className={thClass}>Duration</th>
                   </tr>
                 </thead>
@@ -695,7 +695,7 @@ export default function Experimental() {
                       <td className={tdClass}>{inst.projectedCER ? inst.projectedCER.toFixed(4) : '—'}</td>
                       <td className={tdClass}>{inst.d360}</td>
                       <td className={tdClass}>
-                        {inst.tna180Proj !== null ? `${inst.tna180Proj >= 0 ? '+' : ''}${inst.tna180Proj.toFixed(2)}%` : '—'}
+                        {inst.tnaProj !== null && inst.tnaProj !== undefined ? `${inst.tnaProj >= 0 ? '+' : ''}${inst.tnaProj.toFixed(2)}%` : '—'}
                       </td>
                       <td className={tdClass}>{inst.duration.toFixed(2)}</td>
                     </tr>
@@ -779,9 +779,9 @@ export default function Experimental() {
                       </div>
                     </div>
                     <div className="space-y-0.5">
-                      <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">TNA 180 Proyectada</div>
+                      <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">TNA Proyectada</div>
                       <div className="text-sm font-mono font-bold text-accent">
-                        {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}
+                        {auditData.row.tnaProj !== null && auditData.row.tnaProj !== undefined ? `${auditData.row.tnaProj.toFixed(4)}%` : '—'}
                       </div>
                     </div>
                     <div className="space-y-0.5">
@@ -838,11 +838,11 @@ export default function Experimental() {
                     <div className="flex items-start gap-3 pt-2 border-t border-border/20">
                       <span className="text-accent/70 select-none">6.</span>
                       <div>
-                        <span className="text-accent/80">TNA 180 = (Ratio ^ (180 / Días360) - 1) × 2 × 100</span>
+                        <span className="text-accent/80">TNA = Retorno acumulado × 365 / Días × 100</span>
                         <br />
-                        <span className="text-accent">= ({auditData.row.ratio?.toFixed(6) ?? '?'} ^ (180 / {auditData.row.d360}) - 1) × 200</span>
+                        <span className="text-accent">= {auditData.row.retornoAcumulado != null ? `${(auditData.row.retornoAcumulado * 100).toFixed(4)}%` : '?'} × 365 / {auditData.row.days} × 100</span>
                         <br />
-                        <span className="text-accent font-bold text-sm">= {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}</span>
+                        <span className="text-accent font-bold text-sm">= {auditData.row.tnaProj !== null && auditData.row.tnaProj !== undefined ? `${auditData.row.tnaProj.toFixed(4)}%` : '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -880,7 +880,7 @@ export default function Experimental() {
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                Curva · TNA 180 Proyectada vs Duration (con tendencia logarítmica)
+                Curva · TNA Proyectada vs Duration (con tendencia logarítmica)
               </span>
             </div>
             <div className="p-4 relative" style={{ height: 400 }}>
@@ -898,7 +898,7 @@ export default function Experimental() {
                     <YAxis
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                       tickFormatter={v => `${v.toFixed(1)}%`}
-                      label={{ value: 'TNA 180 Proy.', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      label={{ value: 'TNA Proy.', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                     />
                     <Tooltip
                       cursor={false}
