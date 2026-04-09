@@ -2,12 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CERResponse {
-  cer: number | null;         // CER for settlement date (for market calculations)
-  cerDate: string | null;     // Date of that CER
-  latestCer: number | null;   // Latest CER available from BCRA
+  cer: number | null;           // CER at (settlement - 10 business days)
+  cerDate: string | null;       // Date of that CER
+  settlementDate: string | null; // Settlement date used (today + 1 biz day)
+  latestCer: number | null;     // Latest CER available from BCRA
   latestDate: string | null;
-  laggedCer: number | null;   // CER T-10 (for experimental projected calculations)
-  laggedDate: string | null;
   lagDays: number;
   source: string;
   error?: string;
