@@ -287,6 +287,7 @@ export default function Experimental() {
   const { isAdvanced, activate } = useAdvancedMode();
   const { theme, toggle: toggleTheme } = useTheme();
   const { getEffectiveMaturity } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
   const { custom } = useCustomInstruments();
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
@@ -320,9 +321,9 @@ export default function Experimental() {
         const price = livePrices?.prices[inst.ticker]?.price ?? 0;
         const [my, mm, md] = maturity.split('-').map(Number);
         const matDate = new Date(my, mm - 1, md);
-        const cerRelevantDate = subtractBusinessDays(matDate, 10);
-        const settlement = getSettlementDate(1);
-        const days = daysUntil(maturity);
+        const cerRelevantDate = subtractBusinessDays(matDate, 10, holidayDatesSet);
+        const settlement = getSettlementDate(1, holidayDatesSet);
+        const days = daysUntil(maturity, 1, holidayDatesSet);
         const d360 = days360(settlement, matDate);
         const duration = d360 / 360;
         return { ...inst, maturityDate: maturity, price, matDate, cerRelevantDate, days, d360, duration };
