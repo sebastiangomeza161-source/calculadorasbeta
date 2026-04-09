@@ -646,8 +646,21 @@ export default function Experimental() {
                       fill="hsl(var(--accent))"
                       isAnimationActive={false}
                       shape={(props: any) => {
-                        if (!props.payload?.ticker) return null;
-                        return <circle cx={props.cx} cy={props.cy} r={6} fill="hsl(var(--accent))" stroke="hsl(var(--background))" strokeWidth={1.5} />;
+                        const { cx, cy, payload, onMouseEnter, onMouseLeave } = props;
+                        if (!payload?.ticker || cx == null || cy == null) return null;
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={6}
+                            fill="hsl(var(--accent))"
+                            stroke="hsl(var(--background))"
+                            strokeWidth={1.5}
+                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                            onMouseEnter={onMouseEnter}
+                            onMouseLeave={onMouseLeave}
+                          />
+                        );
                       }}
                     />
                   </ComposedChart>
