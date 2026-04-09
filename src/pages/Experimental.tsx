@@ -227,6 +227,53 @@ function calcLogTrend(points: { duration: number; yield: number }[]): { duration
 
 // ─── Component ───
 
+interface CurvePoint {
+  ticker: string;
+  duration: number;
+  yield: number;
+}
+
+function ProjectedCurveTooltip({ hoveredPoint }: { hoveredPoint: CurvePoint | null }) {
+  if (!hoveredPoint?.ticker) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
+      <p className="font-semibold text-accent">{hoveredPoint.ticker}</p>
+      <p className="text-muted-foreground">Duration: {hoveredPoint.duration.toFixed(2)}</p>
+      <p className="text-foreground">TNA 180: {hoveredPoint.yield.toFixed(2)}%</p>
+    </div>
+  );
+}
+
+function ProjectedCurveDot(props: any) {
+  const { cx, cy, payload, onDotEnter, onDotLeave } = props;
+  if (!payload?.ticker || cx == null || cy == null) return null;
+
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={12}
+        fill="transparent"
+        pointerEvents="all"
+        onMouseEnter={() => onDotEnter?.(payload, cx, cy)}
+        onMouseMove={() => onDotEnter?.(payload, cx, cy)}
+        onMouseLeave={() => onDotLeave?.()}
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={6}
+        fill="hsl(var(--accent))"
+        stroke="hsl(var(--background))"
+        strokeWidth={1.5}
+        pointerEvents="none"
+      />
+    </g>
+  );
+}
+
 export default function Experimental() {
   const navigate = useNavigate();
   const { isAdvanced, activate } = useAdvancedMode();
@@ -303,7 +350,7 @@ export default function Experimental() {
     });
   }, [cerRows, cerLookup]);
 
-  const curvePoints = useMemo(() => {
+  const curvePoints = useMemo<CurvePoint[]>(() => {
     return projectedRows
       .filter(r => r.tna180Proj !== null)
       .map(r => ({ ticker: r.ticker, duration: r.duration, yield: r.tna180Proj! }));
@@ -331,6 +378,19 @@ export default function Experimental() {
   const timestamp = livePrices?.timestamp
     ? new Date(livePrices.timestamp).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : null;
+
+  const [hoveredCurvePoint, setHoveredCurvePoint] = useState<CurvePoint | null>(null);
+  const [hoveredCurvePosition, setHoveredCurvePosition] = useState<{ x: number; y: number } | null>(null);
+
+  const handleCurvePointEnter = useCallback((point: CurvePoint, x: number, y: number) => {
+    setHoveredCurvePoint(point);
+    setHoveredCurvePosition({ x: x + 12, y: Math.max(y - 72, 12) });
+  }, []);
+
+  const handleCurvePointLeave = useCallback(() => {
+    setHoveredCurvePoint(null);
+    setHoveredCurvePosition(null);
+  }, []);
 
   const handleInflationChange = useCallback((index: number, value: number) => {
     setInflation(prev => {
@@ -597,7 +657,7 @@ export default function Experimental() {
                 Curva · TNA 180 Proyectada vs Duration (con tendencia logarítmica)
               </span>
             </div>
-            <div className="p-4" style={{ height: 400 }}>
+            <div className="p-4 relative" style={{ height: 400 }}>
               {curvePoints.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
@@ -616,18 +676,10 @@ export default function Experimental() {
                     />
                     <Tooltip
                       cursor={false}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0]?.payload;
-                        if (!d?.ticker) return null;
-                        return (
-                          <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
-                            <p className="font-semibold text-accent">{d.ticker}</p>
-                            <p className="text-muted-foreground">Duration: {d.duration?.toFixed(2)}</p>
-                            <p className="text-foreground">TNA 180: {d.yield?.toFixed(2)}%</p>
-                          </div>
-                        );
-                      }}
+                      content={<ProjectedCurveTooltip hoveredPoint={hoveredCurvePoint} />}
+                      active={!!hoveredCurvePoint}
+                      position={hoveredCurvePosition ?? undefined}
+                      wrapperStyle={{ pointerEvents: 'none', zIndex: 20 }}
                     />
                     <Line
                       data={trendData}
@@ -645,23 +697,7 @@ export default function Experimental() {
                       dataKey="yield"
                       fill="hsl(var(--accent))"
                       isAnimationActive={false}
-                      shape={(props: any) => {
-                        const { cx, cy, payload, onMouseEnter, onMouseLeave } = props;
-                        if (!payload?.ticker || cx == null || cy == null) return null;
-                        return (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={6}
-                            fill="hsl(var(--accent))"
-                            stroke="hsl(var(--background))"
-                            strokeWidth={1.5}
-                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                            onMouseEnter={onMouseEnter}
-                            onMouseLeave={onMouseLeave}
-                          />
-                        );
-                      }}
+                      shape={<ProjectedCurveDot onDotEnter={handleCurvePointEnter} onDotLeave={handleCurvePointLeave} />}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
