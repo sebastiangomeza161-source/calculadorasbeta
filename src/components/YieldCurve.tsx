@@ -29,7 +29,7 @@ function CustomTooltip({ active, payload, hoveredPoint }: any) {
         {d.isManual && <span className="ml-1.5 text-[9px] text-muted-foreground">(manual)</span>}
       </div>
       <div className="space-y-0.5 text-muted-foreground">
-        <div>Precio: <span className="text-foreground">${d.price?.toFixed(2) ?? '—'}</span></div>
+        <div>Precio: <span className="text-foreground">${d.price?.toFixed(3) ?? '—'}</span></div>
         <div>Días: <span className="text-foreground">{d.days ?? '—'}</span></div>
         <div>Duration: <span className="text-foreground">{d.duration?.toFixed(2) ?? '—'}</span></div>
         <div>Yield: <span className="text-foreground">{d.yield?.toFixed(2) ?? '—'}%</span></div>
