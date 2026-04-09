@@ -138,19 +138,35 @@ function projectCER(
     isOfficial: true,
   });
 
-  // Build a lookup: "YYYY-MM" -> rate
+  // Build a lookup: "YYYY-MM" -> rate, and find the last available rate as fallback
   const inflationLookup: Record<string, number> = {};
-  for (const entry of inflation) {
+  const sortedInflation = [...inflation].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const lastAvailableRate = sortedInflation.length > 0 ? sortedInflation[sortedInflation.length - 1].rate : 0.025;
+  for (const entry of sortedInflation) {
     const key = `${entry.year}-${String(entry.month).padStart(2, '0')}`;
     inflationLookup[key] = entry.rate;
   }
 
-  // Pre-compute daily pace cache by tramo to avoid recalculating per day
+  // Find the best inflation rate: exact match > last prior entry > last available
+  function findInflationRate(year: number, month: number): number {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    if (inflationLookup[key] !== undefined) return inflationLookup[key];
+    // Find the latest entry that is before this year/month
+    let best = lastAvailableRate;
+    for (const entry of sortedInflation) {
+      if (entry.year < year || (entry.year === year && entry.month <= month)) {
+        best = entry.rate;
+      }
+    }
+    return best;
+  }
+
+  // Pre-compute daily pace cache by tramo
   const dailyPaceCache: Record<string, number> = {};
   function getDailyPace(year: number, month: number): number {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     if (dailyPaceCache[key] !== undefined) return dailyPaceCache[key];
-    const rate = inflationLookup[key] ?? 0.025;
+    const rate = findInflationRate(year, month);
     const tramo = getTramoForMonth(year, month);
     const pace = Math.pow(1 + rate, 1 / tramo.days) - 1;
     dailyPaceCache[key] = pace;
@@ -598,14 +614,15 @@ export default function Experimental() {
                       label={{ value: 'TNA 180 Proy.', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                     />
                     <Tooltip
+                      cursor={false}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
-                        const d = payload[0].payload;
-                        if (!d.ticker) return null; // trend point
+                        const d = payload[0]?.payload;
+                        if (!d?.ticker) return null;
                         return (
                           <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
                             <p className="font-semibold text-accent">{d.ticker}</p>
-                            <p className="text-muted-foreground">Duration: {d.duration.toFixed(2)}</p>
+                            <p className="text-muted-foreground">Duration: {d.duration?.toFixed(2)}</p>
                             <p className="text-foreground">TNA 180: {d.yield?.toFixed(2)}%</p>
                           </div>
                         );
@@ -619,8 +636,18 @@ export default function Experimental() {
                       dot={false}
                       connectNulls={false}
                       isAnimationActive={false}
+                      tooltipType="none"
                     />
-                    <Scatter dataKey="yield" fill="hsl(var(--accent))" r={5} isAnimationActive={false} />
+                    <Scatter
+                      dataKey="yield"
+                      fill="hsl(var(--accent))"
+                      r={5}
+                      isAnimationActive={false}
+                      shape={(props: any) => {
+                        if (props.payload?.ticker == null) return null;
+                        return <circle cx={props.cx} cy={props.cy} r={6} fill="hsl(var(--accent))" stroke="hsl(var(--background))" strokeWidth={1.5} />;
+                      }}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
