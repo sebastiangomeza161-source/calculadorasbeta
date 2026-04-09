@@ -657,7 +657,7 @@ export default function Experimental() {
                 Curva · TNA 180 Proyectada vs Duration (con tendencia logarítmica)
               </span>
             </div>
-            <div className="p-4" style={{ height: 400 }}>
+            <div className="p-4 relative" style={{ height: 400 }}>
               {curvePoints.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
@@ -676,18 +676,9 @@ export default function Experimental() {
                     />
                     <Tooltip
                       cursor={false}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0]?.payload;
-                        if (!d?.ticker) return null;
-                        return (
-                          <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
-                            <p className="font-semibold text-accent">{d.ticker}</p>
-                            <p className="text-muted-foreground">Duration: {d.duration?.toFixed(2)}</p>
-                            <p className="text-foreground">TNA 180: {d.yield?.toFixed(2)}%</p>
-                          </div>
-                        );
-                      }}
+                      content={<ProjectedCurveTooltip hoveredPoint={hoveredCurvePoint} />}
+                      active={!!hoveredCurvePoint}
+                      position={hoveredCurvePosition ?? undefined}
                     />
                     <Line
                       data={trendData}
@@ -705,24 +696,16 @@ export default function Experimental() {
                       dataKey="yield"
                       fill="hsl(var(--accent))"
                       isAnimationActive={false}
-                      shape={(props: any) => {
-                        const { cx, cy, payload, onMouseEnter, onMouseLeave } = props;
-                        if (!payload?.ticker || cx == null || cy == null) return null;
-                        return (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={6}
-                            fill="hsl(var(--accent))"
-                            stroke="hsl(var(--background))"
-                            strokeWidth={1.5}
-                            style={{ cursor: 'pointer', pointerEvents: 'all' }}
-                            onMouseEnter={onMouseEnter}
-                            onMouseLeave={onMouseLeave}
-                          />
-                        );
-                      }}
+                      shape={<ProjectedCurveDot onDotEnter={handleCurvePointEnter} onDotLeave={handleCurvePointLeave} />}
                     />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-xs text-muted-foreground font-mono">
+                  Sin datos para graficar
+                </div>
+              )}
+            </div>
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
