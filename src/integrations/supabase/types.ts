@@ -68,6 +68,27 @@ export type Database = {
         }
         Relationships: []
       }
+      holidays: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          label: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          label?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          label?: string | null
+        }
+        Relationships: []
+      }
       maturity_overrides: {
         Row: {
           maturity_date: string
