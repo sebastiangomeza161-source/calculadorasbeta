@@ -72,7 +72,7 @@ export default function ProjectedCurve({ curvePoints, inflation }: Props) {
   return (
     <div className="terminal-card p-4 mt-4">
       <h3 className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-1">
-        Curva proyectada · TNA 180 con CER proyectado
+        Curva proyectada · TNA con CER proyectado
       </h3>
       <p className="text-[9px] text-muted-foreground/70 font-mono mb-3">
         Curva proyectada basada en cálculos con inflación futura · Fuente: cálculo interno
@@ -103,7 +103,7 @@ export default function ProjectedCurve({ curvePoints, inflation }: Props) {
               axisLine={{ stroke: 'hsl(220 15% 18%)' }}
               tickFormatter={(v: number) => `${v}%`}
               label={{
-                value: 'TNA 180 Proy.',
+                value: 'TNA Proy.',
                 angle: -90,
                 position: 'insideLeft',
                 offset: 0,
@@ -136,7 +136,7 @@ export default function ProjectedCurve({ curvePoints, inflation }: Props) {
           >
             <p className="font-semibold text-positive">{hoveredPoint.ticker}</p>
             <p className="text-muted-foreground">Duration: {hoveredPoint.duration.toFixed(2)}</p>
-            <p className="text-foreground">TNA 180: {hoveredPoint.yield.toFixed(2)}%</p>
+            <p className="text-foreground">TNA Proy.: {hoveredPoint.yield.toFixed(2)}%</p>
           </div>
         )}
       </div>
