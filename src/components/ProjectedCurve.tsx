@@ -74,12 +74,14 @@ interface Props {
   lecapPoints?: LecapPoint[];
 }
 
+const MAX_DURATION = 1.3;
+
 export default function ProjectedCurve({ curvePoints, inflation, lecapPoints = [] }: Props) {
   const [hoveredPoint, setHoveredPoint] = useState<{ ticker: string; duration: number; yield: number; type: string } | null>(null);
   const [hoveredPos, setHoveredPos] = useState<{ x: number; y: number } | null>(null);
 
-  const sorted = useMemo(() => [...curvePoints].sort((a, b) => a.duration - b.duration), [curvePoints]);
-  const sortedLecap = useMemo(() => [...lecapPoints].sort((a, b) => a.duration - b.duration), [lecapPoints]);
+  const sorted = useMemo(() => [...curvePoints].filter(p => p.duration <= MAX_DURATION).sort((a, b) => a.duration - b.duration), [curvePoints]);
+  const sortedLecap = useMemo(() => [...lecapPoints].filter(p => p.duration <= MAX_DURATION).sort((a, b) => a.duration - b.duration), [lecapPoints]);
   const trendCer = useMemo(() => logTrendLine(sorted), [sorted]);
   const trendLecap = useMemo(() => logTrendLine(sortedLecap), [sortedLecap]);
 
@@ -95,9 +97,9 @@ export default function ProjectedCurve({ curvePoints, inflation, lecapPoints = [
   if (curvePoints.length === 0) return null;
 
   const allYields = [
-    ...curvePoints.map(d => d.yield),
+    ...sorted.map(d => d.yield),
     ...trendCer.map(d => d.yield),
-    ...lecapPoints.map(d => d.yield),
+    ...sortedLecap.map(d => d.yield),
     ...trendLecap.map(d => d.yield),
   ];
   const yMin = Math.floor(Math.min(...allYields) - 2);
