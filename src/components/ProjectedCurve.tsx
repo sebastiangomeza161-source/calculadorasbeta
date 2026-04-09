@@ -118,7 +118,7 @@ export default function ProjectedCurve({ curvePoints, inflation, lecapPoints = [
             <XAxis
               dataKey="duration"
               type="number"
-              domain={[0, 1.2]}
+              domain={[0, 1.3]}
               tick={{ fontSize: 10, fill: 'hsl(220 10% 50%)' }}
               tickLine={false}
               axisLine={{ stroke: 'hsl(220 15% 18%)' }}
