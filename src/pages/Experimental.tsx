@@ -291,23 +291,10 @@ export default function Experimental() {
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
   const { data: cerData } = useCER();
-  const [inflation, setInflation] = useState<InflationEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('experimental_inflation');
-      if (saved) {
-        const parsed = JSON.parse(saved) as InflationEntry[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return getDefaultInflation();
-  });
+  const { inflation, setInflation, loading: inflationLoading } = useInflationInputs();
 
   const [showAllDays, setShowAllDays] = useState(false);
   const [selectedAuditTicker, setSelectedAuditTicker] = useState<string>('');
-
-  useEffect(() => {
-    localStorage.setItem('experimental_inflation', JSON.stringify(inflation));
-  }, [inflation]);
 
   const allCer = useMemo(() => [...CER_INSTRUMENTS, ...custom.filter(i => i.type === 'CER')], [custom]);
   const lastOfficialCER = cerData?.latestCer ?? cerData?.cer ?? null;
