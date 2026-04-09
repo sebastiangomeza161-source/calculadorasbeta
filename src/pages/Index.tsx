@@ -248,7 +248,7 @@ export default function Index() {
                       <span className="ml-1">({cerData.latestDate})</span>
                     </span>
                   )}
-                  <span className="text-positive text-[10px] font-mono">Fuente: BCRA API · Rezago: T-10 días hábiles</span>
+                  <span className="text-positive text-[10px] font-mono">Fuente: BCRA · CER a fecha de settlement (T+1)</span>
                 </div>
               ) : cerLoading ? (
                 <span>⏳ Cargando CER desde BCRA...</span>
