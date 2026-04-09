@@ -1,26 +1,31 @@
 import { useState, useCallback } from 'react';
 import { useHolidays } from '@/hooks/useHolidays';
-import { Calendar, Trash2, Upload, X } from 'lucide-react';
+import { Calendar, Upload, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 function parseDateInput(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
-  // YYYY-MM-DD
   let m = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (m) {
     const [, y, mo, d] = m;
     return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
 
-  // DD/MM/YYYY
   m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) {
     const [, d, mo, y] = m;
     return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
 
-  // DD/MM/YY
   m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
   if (m) {
     const [, d, mo, yy] = m;
@@ -75,79 +80,95 @@ export default function HolidayManager() {
   };
 
   return (
-    <div className="terminal-card overflow-hidden">
-      <div className="px-4 py-2 border-b border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-accent" />
-          <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-            Feriados · {holidays.length} cargados
-          </span>
-        </div>
-        {holidays.length > 0 && (
-          <button
-            onClick={() => clearAll.mutate()}
-            className="text-[10px] text-muted-foreground hover:text-destructive font-mono uppercase tracking-wider transition-colors"
-            title="Limpiar todos"
-          >
-            Limpiar todos
-          </button>
-        )}
-      </div>
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
+          title="Gestionar feriados globales"
+        >
+          <Calendar className="w-3 h-3" />
+          Feriados{holidays.length > 0 ? ` (${holidays.length})` : ''}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm font-mono">
+            <Calendar className="w-4 h-4 text-accent" />
+            Feriados globales · {holidays.length} cargados
+          </DialogTitle>
+          <DialogDescription className="text-[10px] font-mono text-muted-foreground">
+            Los feriados aplican a todos los cálculos de días hábiles: settlement, CER T-10, LECAP y cualquier instrumento.
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="p-4 space-y-3">
-        {/* Input area */}
-        <div className="space-y-2">
-          <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-            Pegar fechas (dd/mm/aa, dd/mm/aaaa, yyyy-mm-dd) · una por línea o separadas por coma
-          </label>
-          <textarea
-            value={textInput}
-            onChange={e => setTextInput(e.target.value)}
-            placeholder={`01/01/26\n24/03/26\n02/04/26\n01/05/26`}
-            rows={4}
-            className="w-full bg-transparent border border-border/40 rounded px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-accent/60 transition-colors resize-none"
-          />
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleImport}
-              disabled={!textInput.trim() || addHolidays.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-ring transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Upload className="w-3 h-3" />
-              Importar
-            </button>
-            {importStatus && (
-              <span className="text-[10px] font-mono text-accent">{importStatus}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Holiday list */}
-        {holidays.length > 0 && (
-          <div className="max-h-[200px] overflow-y-auto border-t border-border/30 pt-3">
-            <div className="flex flex-wrap gap-2">
-              {holidays.map(h => (
-                <div
-                  key={h.id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded border border-border/30 bg-card text-xs font-mono text-muted-foreground"
-                >
-                  <span>{formatDisplay(h.date)}</span>
-                  <button
-                    onClick={() => removeHoliday.mutate(h.id)}
-                    className="text-muted-foreground/40 hover:text-destructive transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+        <div className="space-y-4">
+          {/* Input area */}
+          <div className="space-y-2">
+            <label className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+              Pegar fechas (dd/mm/aa, dd/mm/aaaa, yyyy-mm-dd) · una por línea o separadas por coma
+            </label>
+            <textarea
+              value={textInput}
+              onChange={e => setTextInput(e.target.value)}
+              placeholder={`01/01/26\n24/03/26\n02/04/26\n01/05/26`}
+              rows={4}
+              className="w-full bg-transparent border border-border/40 rounded px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-accent/60 transition-colors resize-none"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleImport}
+                disabled={!textInput.trim() || addHolidays.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-ring transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-3 h-3" />
+                Importar
+              </button>
+              {importStatus && (
+                <span className="text-[10px] font-mono text-accent">{importStatus}</span>
+              )}
             </div>
           </div>
-        )}
 
-        {isLoading && (
-          <span className="text-[10px] text-muted-foreground font-mono animate-pulse">Cargando feriados...</span>
-        )}
-      </div>
-    </div>
+          {/* Holiday list */}
+          {holidays.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                  Feriados cargados
+                </span>
+                <button
+                  onClick={() => clearAll.mutate()}
+                  className="text-[10px] text-muted-foreground hover:text-destructive font-mono uppercase tracking-wider transition-colors"
+                >
+                  Limpiar todos
+                </button>
+              </div>
+              <div className="max-h-[200px] overflow-y-auto border border-border/30 rounded p-2">
+                <div className="flex flex-wrap gap-2">
+                  {holidays.map(h => (
+                    <div
+                      key={h.id}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-border/30 bg-card text-xs font-mono text-muted-foreground"
+                    >
+                      <span>{formatDisplay(h.date)}</span>
+                      <button
+                        onClick={() => removeHoliday.mutate(h.id)}
+                        className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isLoading && (
+            <span className="text-[10px] text-muted-foreground font-mono animate-pulse">Cargando feriados...</span>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

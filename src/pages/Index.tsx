@@ -182,6 +182,9 @@ export default function Index() {
               Experimental
             </button>
           )}
+          {isAdvanced && (
+            <HolidayManager />
+          )}
           <button
             onClick={handleAdvancedToggle}
             className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-ring transition-colors text-[10px] uppercase tracking-wider font-mono"
@@ -317,12 +320,6 @@ export default function Index() {
           yLabel={activeTab === 'LECAP' ? 'TNA' : 'TNA 180'}
         />
 
-        {/* Holiday Manager (Advanced Mode only) */}
-        {isAdvanced && (
-          <div className="mt-6">
-            <HolidayManager />
-          </div>
-        )}
       </main>
 
       {/* Footer */}
