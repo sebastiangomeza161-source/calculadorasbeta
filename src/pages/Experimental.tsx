@@ -7,6 +7,7 @@ import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
+import { useHolidays } from '@/hooks/useHolidays';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2, ChevronDown } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
@@ -31,13 +32,18 @@ function days360(start: Date, end: Date): number {
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
 }
 
-function subtractBusinessDays(date: Date, n: number): Date {
+function subtractBusinessDays(date: Date, n: number, holidaySet?: Set<string>): Date {
   const result = new Date(date);
   let count = 0;
   while (count < n) {
     result.setDate(result.getDate() - 1);
     const dow = result.getDay();
-    if (dow !== 0 && dow !== 6) count++;
+    if (dow === 0 || dow === 6) continue;
+    if (holidaySet) {
+      const iso = `${result.getFullYear()}-${String(result.getMonth() + 1).padStart(2, '0')}-${String(result.getDate()).padStart(2, '0')}`;
+      if (holidaySet.has(iso)) continue;
+    }
+    count++;
   }
   return result;
 }
