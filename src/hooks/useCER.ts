@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CERResponse {
-  cer: number | null;       // CER con rezago de 10 días hábiles (para cálculos)
-  cerDate: string | null;   // Fecha efectiva del CER usado
-  latestCer: number | null; // CER más reciente disponible
+  cer: number | null;         // CER for settlement date (for market calculations)
+  cerDate: string | null;     // Date of that CER
+  latestCer: number | null;   // Latest CER available from BCRA
   latestDate: string | null;
+  laggedCer: number | null;   // CER T-10 (for experimental projected calculations)
+  laggedDate: string | null;
   lagDays: number;
   source: string;
   error?: string;
