@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
 
     // Upsert today's prices (only base tickers)
     const rows = Object.entries(prices)
-      .filter(([t, d]) => d.price > 0 && BASE_TICKERS.has(t))
+      .filter(([_, d]) => d.price > 0)
       .map(([ticker, d]) => ({
         ticker,
         price: d.price,
