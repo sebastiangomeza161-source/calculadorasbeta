@@ -87,13 +87,13 @@ export default function Index() {
         change: livePrices?.prices[inst.ticker]?.change ?? null,
       };
     })
-    .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
+    .sort((a, b) => daysUntil(a.maturityDate, 1, holidayDatesSet) - daysUntil(b.maturityDate, 1, holidayDatesSet));
 
   const curveData = useMemo(() => {
     const points: { ticker: string; price: number; days: number; duration: number; yield: number; isManual?: boolean }[] = [];
 
     for (const inst of enriched) {
-      const days = daysUntil(inst.maturityDate);
+      const days = daysUntil(inst.maturityDate, 1, holidayDatesSet);
       const duration = days / 360;
 
       // Always add market point if original market price exists
