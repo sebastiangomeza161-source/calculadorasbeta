@@ -17,6 +17,7 @@ export default function InstrumentDetail() {
   const { data: cerData } = useCER();
   const { isAdvanced } = useAdvancedMode();
   const { getEffectiveMaturity, saveOverride } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
 
   const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
   const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
