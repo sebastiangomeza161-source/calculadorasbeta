@@ -630,13 +630,14 @@ export default function Experimental() {
           </div>
         </section>
 
-        {/* RESULTS — Projected rates (with audit columns) */}
+        {/* RESULTS — Projected rates (clean) */}
         <section>
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                Resultado · Tasas CER Proyectadas (con auditoría)
+                Resultado · Tasas CER Proyectadas
               </span>
+              <span className="text-[10px] text-muted-foreground/60 font-mono ml-3">click en una fila para auditar</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -648,12 +649,7 @@ export default function Experimental() {
                     <th className={thClass}>Fecha CER (T-10)</th>
                     <th className={thClass}>CER Inicial</th>
                     <th className={thClass}>CER Proy.</th>
-                    <th className={auditThClass}>Factor CER</th>
-                    <th className={auditThClass}>Precio Rel.</th>
-                    <th className={auditThClass}>Adj. Face</th>
-                    <th className={auditThClass}>Ratio</th>
-                    <th className={auditThClass}>Días 360</th>
-                    <th className={auditThClass}>Ret. Acum.</th>
+                    <th className={thClass}>Días</th>
                     <th className={thClass}>TNA 180 Proy.</th>
                     <th className={thClass}>Duration</th>
                   </tr>
@@ -671,12 +667,7 @@ export default function Experimental() {
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.cerRelevantDate)}</td>
                       <td className={tdClass}>{inst.cerInicial ? inst.cerInicial.toFixed(4) : '—'}</td>
                       <td className={tdClass}>{inst.projectedCER ? inst.projectedCER.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.factorCER ? inst.factorCER.toFixed(6) : '—'}</td>
-                      <td className={auditTdClass}>{inst.precioRelativo ? inst.precioRelativo.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.adjustedFace ? inst.adjustedFace.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.ratio ? inst.ratio.toFixed(6) : '—'}</td>
-                      <td className={auditTdClass}>{inst.d360}</td>
-                      <td className={auditTdClass}>{inst.retornoAcumulado !== null && inst.retornoAcumulado !== undefined ? `${(inst.retornoAcumulado * 100).toFixed(2)}%` : '—'}</td>
+                      <td className={tdClass}>{inst.d360}</td>
                       <td className={tdClass}>
                         {inst.tna180Proj !== null ? `${inst.tna180Proj >= 0 ? '+' : ''}${inst.tna180Proj.toFixed(2)}%` : '—'}
                       </td>
@@ -689,7 +680,7 @@ export default function Experimental() {
           </div>
         </section>
 
-        {/* AUDIT CARD — Per-ticker audit */}
+        {/* AUDIT CARD — Per-ticker audit (A/B/C blocks) */}
         {auditData && auditData.row && (
           <section>
             <div className="terminal-card overflow-hidden border-accent/30">
@@ -711,81 +702,126 @@ export default function Experimental() {
                   <button onClick={() => setSelectedAuditTicker('')} className="text-[10px] text-muted-foreground hover:text-foreground">✕</button>
                 </div>
               </div>
-              <div className="p-4 space-y-4">
-                {/* Basic info */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Ticker', value: auditData.row.ticker },
-                    { label: 'Precio', value: auditData.row.price > 0 ? `$${auditData.row.price.toFixed(2)}` : '—' },
-                    { label: 'Vencimiento', value: formatDateShort(auditData.row.matDate) },
-                    { label: 'Fecha CER (T-10)', value: formatDateShort(auditData.row.cerRelevantDate) },
-                  ].map(item => (
-                    <div key={item.label} className="space-y-0.5">
-                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
-                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
-                    </div>
-                  ))}
-                </div>
 
-                {/* CER info */}
-                <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'CER Inicial', value: auditData.row.cerInicial ? auditData.row.cerInicial.toFixed(4) : '—' },
-                    { label: 'CER Proyectado', value: auditData.row.projectedCER ? auditData.row.projectedCER.toFixed(4) : '—' },
-                    { label: 'Factor CER', value: auditData.row.factorCER ? auditData.row.factorCER.toFixed(6) : '—' },
-                    { label: 'Fecha CER tabla', value: formatDateISO(auditData.row.cerRelevantDate) },
-                  ].map(item => (
-                    <div key={item.label} className="space-y-0.5">
-                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
-                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
-                    </div>
-                  ))}
-                </div>
+              <div className="p-5 space-y-6">
 
-                {/* Tramo info from projection row */}
-                {auditData.projRow && (
-                  <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* BLOQUE A — Inputs */}
+                <div>
+                  <h3 className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-3">A · Datos de entrada</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
                     {[
-                      { label: 'Tramo inflación', value: auditData.projRow.tramoLabel ?? '—' },
-                      { label: 'Inflación mensual', value: auditData.projRow.inflationRate !== null ? `${(auditData.projRow.inflationRate * 100).toFixed(2)}%` : '—' },
-                      { label: 'Daily pace', value: auditData.projRow.dailyPace !== null ? `${(auditData.projRow.dailyPace * 100).toFixed(6)}%` : '—' },
-                      { label: 'Días tramo', value: auditData.projRow.tramoDays?.toString() ?? '—' },
+                      { label: 'Ticker', value: auditData.row.ticker },
+                      { label: 'Precio', value: auditData.row.price > 0 ? `$${auditData.row.price.toFixed(2)}` : '—' },
+                      { label: 'Vencimiento', value: formatDateShort(auditData.row.matDate) },
+                      { label: 'Fecha CER (T-10)', value: formatDateShort(auditData.row.cerRelevantDate) },
+                      { label: 'Fecha CER tabla', value: formatDateISO(auditData.row.cerRelevantDate) },
+                      { label: 'CER Inicial', value: auditData.row.cerInicial ? auditData.row.cerInicial.toFixed(4) : '—' },
+                      { label: 'CER Proyectado', value: auditData.row.projectedCER ? auditData.row.projectedCER.toFixed(4) : '—' },
+                      { label: 'Días 360', value: auditData.row.d360.toString() },
                     ].map(item => (
                       <div key={item.label} className="space-y-0.5">
-                        <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
+                        <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">{item.label}</div>
                         <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
                       </div>
                     ))}
                   </div>
-                )}
-
-                {/* Calculation steps */}
-                <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Precio relativo', value: auditData.row.precioRelativo ? auditData.row.precioRelativo.toFixed(4) : '—' },
-                    { label: 'Adjusted Face', value: auditData.row.adjustedFace ? auditData.row.adjustedFace.toFixed(4) : '—' },
-                    { label: 'Ratio (AF/P)', value: auditData.row.ratio ? auditData.row.ratio.toFixed(6) : '—' },
-                    { label: 'Retorno acumulado', value: auditData.row.retornoAcumulado != null ? `${(auditData.row.retornoAcumulado * 100).toFixed(2)}%` : '—' },
-                  ].map(item => (
-                    <div key={item.label} className="space-y-0.5">
-                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
-                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                  {auditData.projRow && (
+                    <div className="mt-3 pt-3 border-t border-border/20 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+                      {[
+                        { label: 'Tramo inflación', value: auditData.projRow.tramoLabel ?? '—' },
+                        { label: 'Inflación mensual', value: auditData.projRow.inflationRate !== null ? `${(auditData.projRow.inflationRate * 100).toFixed(2)}%` : '—' },
+                        { label: 'Daily pace', value: auditData.projRow.dailyPace !== null ? `${(auditData.projRow.dailyPace * 100).toFixed(6)}%` : '—' },
+                        { label: 'Días del tramo', value: auditData.projRow.tramoDays?.toString() ?? '—' },
+                      ].map(item => (
+                        <div key={item.label} className="space-y-0.5">
+                          <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">{item.label}</div>
+                          <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
 
-                {/* Formula reconstruction */}
-                <div className="border-t border-border/30 pt-3 space-y-2">
-                  <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Fórmula reconstruida</div>
-                  <div className="bg-card border border-border/40 rounded p-3 font-mono text-xs text-foreground space-y-1">
-                    <p>Factor CER = CER_proy / CER_ini = {auditData.row.projectedCER?.toFixed(4) ?? '?'} / {auditData.row.cerInicial?.toFixed(4) ?? '?'} = {auditData.row.factorCER?.toFixed(6) ?? '?'}</p>
-                    <p>Adjusted Face = 100 × {auditData.row.factorCER?.toFixed(6) ?? '?'} = {auditData.row.adjustedFace?.toFixed(4) ?? '?'}</p>
-                    <p>Ratio = {auditData.row.adjustedFace?.toFixed(4) ?? '?'} / {auditData.row.price.toFixed(2)} = {auditData.row.ratio?.toFixed(6) ?? '?'}</p>
-                    <p>Días 360 = {auditData.row.d360}</p>
-                    <p className="text-accent font-semibold">TNA 180 = (ratio^(180/{auditData.row.d360}) - 1) × 2 × 100 = ({auditData.row.ratio?.toFixed(6) ?? '?'}^{auditData.row.d360 > 0 ? (180 / auditData.row.d360).toFixed(6) : '?'} - 1) × 200</p>
-                    <p className="text-accent font-semibold text-sm">= {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}</p>
+                {/* BLOQUE B — Resultado intermedio */}
+                <div>
+                  <h3 className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-3">B · Resultado intermedio</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+                    <div className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">Retorno acumulado</div>
+                      <div className="text-sm font-mono font-bold text-foreground">
+                        {auditData.row.retornoAcumulado != null ? `${(auditData.row.retornoAcumulado * 100).toFixed(2)}%` : '—'}
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">TNA 180 Proyectada</div>
+                      <div className="text-sm font-mono font-bold text-accent">
+                        {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground/70 font-mono uppercase tracking-wider">Duration</div>
+                      <div className="text-sm font-mono font-bold text-foreground">{auditData.row.duration.toFixed(2)}</div>
+                    </div>
                   </div>
                 </div>
+
+                {/* BLOQUE C — Explicación paso a paso */}
+                <div>
+                  <h3 className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-3">C · Cálculo paso a paso</h3>
+                  <div className="bg-card border border-border/30 rounded-lg p-4 space-y-3 text-xs font-mono leading-relaxed">
+                    <div className="flex items-start gap-3">
+                      <span className="text-muted-foreground/50 select-none">1.</span>
+                      <div>
+                        <span className="text-muted-foreground">Factor CER = CER proyectado / CER inicial</span>
+                        <br />
+                        <span className="text-foreground">= {auditData.row.projectedCER?.toFixed(4) ?? '?'} / {auditData.row.cerInicial?.toFixed(4) ?? '?'} = <strong>{auditData.row.factorCER?.toFixed(6) ?? '?'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-muted-foreground/50 select-none">2.</span>
+                      <div>
+                        <span className="text-muted-foreground">Precio relativo = Precio / 100</span>
+                        <br />
+                        <span className="text-foreground">= {auditData.row.price.toFixed(2)} / 100 = <strong>{auditData.row.precioRelativo?.toFixed(4) ?? '?'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-muted-foreground/50 select-none">3.</span>
+                      <div>
+                        <span className="text-muted-foreground">Adjusted Face = 100 × Factor CER</span>
+                        <br />
+                        <span className="text-foreground">= 100 × {auditData.row.factorCER?.toFixed(6) ?? '?'} = <strong>{auditData.row.adjustedFace?.toFixed(4) ?? '?'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-muted-foreground/50 select-none">4.</span>
+                      <div>
+                        <span className="text-muted-foreground">Ratio = Adjusted Face / Precio</span>
+                        <br />
+                        <span className="text-foreground">= {auditData.row.adjustedFace?.toFixed(4) ?? '?'} / {auditData.row.price.toFixed(2)} = <strong>{auditData.row.ratio?.toFixed(6) ?? '?'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-muted-foreground/50 select-none">5.</span>
+                      <div>
+                        <span className="text-muted-foreground">Retorno acumulado = Ratio - 1</span>
+                        <br />
+                        <span className="text-foreground">= {auditData.row.ratio?.toFixed(6) ?? '?'} - 1 = <strong>{auditData.row.retornoAcumulado != null ? `${(auditData.row.retornoAcumulado * 100).toFixed(2)}%` : '?'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 pt-2 border-t border-border/20">
+                      <span className="text-accent/70 select-none">6.</span>
+                      <div>
+                        <span className="text-accent/80">TNA 180 = (Ratio ^ (180 / Días360) - 1) × 2 × 100</span>
+                        <br />
+                        <span className="text-accent">= ({auditData.row.ratio?.toFixed(6) ?? '?'} ^ (180 / {auditData.row.d360}) - 1) × 200</span>
+                        <br />
+                        <span className="text-accent font-bold text-sm">= {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </section>
