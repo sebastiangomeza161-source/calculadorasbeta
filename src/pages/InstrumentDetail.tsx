@@ -77,7 +77,7 @@ export default function InstrumentDetail() {
     );
   }
 
-  const days = daysUntil(effectiveMaturity, activeTPlus);
+  const days = daysUntil(effectiveMaturity, activeTPlus, holidayDatesSet);
 
   const handleStartEdit = () => {
     setMaturityInput(effectiveMaturity);
