@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
-import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2 } from 'lucide-react';
+import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2, ChevronDown } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 
 // ─── Helpers ───
@@ -59,20 +59,17 @@ function parseLocalDate(s: string): Date {
 }
 
 // ─── Inflation table defaults ───
-// Each entry represents a month whose inflation applies from the 16th of that month to the 15th of the next month.
-// E.g. "Marzo 2026" inflation applies from March 16 to April 15.
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 interface InflationEntry {
   year: number;
-  month: number; // 0-indexed
+  month: number;
   label: string;
-  rate: number;  // decimal, e.g. 0.029
+  rate: number;
 }
 
 function getDefaultInflation(): InflationEntry[] {
-  // Start from 2 months before current to cover any ongoing tramo
   const today = new Date();
   const entries: InflationEntry[] = [];
   for (let i = -2; i < 24; i++) {
@@ -88,40 +85,38 @@ function getDefaultInflation(): InflationEntry[] {
 }
 
 // ─── Tramo logic ───
-// Inflation for month M applies from the 16th of month M to the 15th of month M+1.
-// Given a date, determine which inflation month applies:
-//   - day 1-15 → previous month's inflation
-//   - day 16-31 → this month's inflation
 
 function getInflationMonthForDate(d: Date): { year: number; month: number } {
   const day = d.getDate();
   if (day <= 15) {
-    // Use previous month's inflation
     const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
     return { year: prev.getFullYear(), month: prev.getMonth() };
   }
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-// Get the tramo boundaries for a given inflation month:
-// start = 16th of that month, end = 15th of next month
 function getTramoForMonth(year: number, month: number): { start: Date; end: Date; days: number } {
   const start = new Date(year, month, 16);
   const endMonth = month + 1;
   const end = new Date(year, endMonth, 15);
-  // Count days inclusive
   const diffMs = end.getTime() - start.getTime();
-  const days = Math.round(diffMs / 86400000) + 1; // inclusive
+  const days = Math.round(diffMs / 86400000) + 1;
   return { start, end, days };
 }
 
-// ─── CER Projection ───
+// ─── CER Projection (enriched for audit) ───
 
 interface CERProjectionRow {
   date: Date;
   dateStr: string;
   cer: number;
   isOfficial: boolean;
+  // Audit fields
+  inflationRate: number | null;
+  tramoDays: number | null;
+  dailyPace: number | null;
+  prevCER: number | null;
+  tramoLabel: string | null;
 }
 
 function projectCER(
@@ -136,9 +131,13 @@ function projectCER(
     dateStr: formatDateISO(lastOfficialDate),
     cer: lastOfficialCER,
     isOfficial: true,
+    inflationRate: null,
+    tramoDays: null,
+    dailyPace: null,
+    prevCER: null,
+    tramoLabel: null,
   });
 
-  // Build a lookup: "YYYY-MM" -> rate, and find the last available rate as fallback
   const inflationLookup: Record<string, number> = {};
   const sortedInflation = [...inflation].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const lastAvailableRate = sortedInflation.length > 0 ? sortedInflation[sortedInflation.length - 1].rate : 0.025;
@@ -147,11 +146,9 @@ function projectCER(
     inflationLookup[key] = entry.rate;
   }
 
-  // Find the best inflation rate: exact match > last prior entry > last available
   function findInflationRate(year: number, month: number): number {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     if (inflationLookup[key] !== undefined) return inflationLookup[key];
-    // Find the latest entry that is before this year/month
     let best = lastAvailableRate;
     for (const entry of sortedInflation) {
       if (entry.year < year || (entry.year === year && entry.month <= month)) {
@@ -161,35 +158,39 @@ function projectCER(
     return best;
   }
 
-  // Pre-compute daily pace cache by tramo
-  const dailyPaceCache: Record<string, number> = {};
-  function getDailyPace(year: number, month: number): number {
+  const dailyPaceCache: Record<string, { pace: number; rate: number; days: number }> = {};
+  function getDailyPaceInfo(year: number, month: number) {
     const key = `${year}-${String(month).padStart(2, '0')}`;
-    if (dailyPaceCache[key] !== undefined) return dailyPaceCache[key];
+    if (dailyPaceCache[key]) return dailyPaceCache[key];
     const rate = findInflationRate(year, month);
     const tramo = getTramoForMonth(year, month);
     const pace = Math.pow(1 + rate, 1 / tramo.days) - 1;
-    dailyPaceCache[key] = pace;
-    return pace;
+    dailyPaceCache[key] = { pace, rate, days: tramo.days };
+    return dailyPaceCache[key];
   }
 
   let currentDate = new Date(lastOfficialDate);
   let currentCER = lastOfficialCER;
 
   while (currentDate < endDate) {
+    const prevCER = currentCER;
     currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1);
     if (currentDate > endDate) break;
 
-    // Determine which inflation month applies to this date
     const infMonth = getInflationMonthForDate(currentDate);
-    const dailyPace = getDailyPace(infMonth.year, infMonth.month);
+    const info = getDailyPaceInfo(infMonth.year, infMonth.month);
 
-    currentCER = currentCER * (1 + dailyPace);
+    currentCER = prevCER * (1 + info.pace);
     rows.push({
       date: new Date(currentDate),
       dateStr: formatDateISO(currentDate),
       cer: currentCER,
       isOfficial: false,
+      inflationRate: info.rate,
+      tramoDays: info.days,
+      dailyPace: info.pace,
+      prevCER: prevCER,
+      tramoLabel: `${MONTH_NAMES[infMonth.month]} ${infMonth.year}`,
     });
   }
 
@@ -235,7 +236,6 @@ interface CurvePoint {
 
 function ProjectedCurveTooltip({ hoveredPoint }: { hoveredPoint: CurvePoint | null }) {
   if (!hoveredPoint?.ticker) return null;
-
   return (
     <div className="rounded-md border border-border bg-card p-2 shadow-lg text-xs font-mono">
       <p className="font-semibold text-accent">{hoveredPoint.ticker}</p>
@@ -248,28 +248,13 @@ function ProjectedCurveTooltip({ hoveredPoint }: { hoveredPoint: CurvePoint | nu
 function ProjectedCurveDot(props: any) {
   const { cx, cy, payload, onDotEnter, onDotLeave } = props;
   if (!payload?.ticker || cx == null || cy == null) return null;
-
   return (
     <g style={{ cursor: 'pointer' }}>
-      <circle
-        cx={cx}
-        cy={cy}
-        r={12}
-        fill="transparent"
-        pointerEvents="all"
+      <circle cx={cx} cy={cy} r={12} fill="transparent" pointerEvents="all"
         onMouseEnter={() => onDotEnter?.(payload, cx, cy)}
         onMouseMove={() => onDotEnter?.(payload, cx, cy)}
-        onMouseLeave={() => onDotLeave?.()}
-      />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={6}
-        fill="hsl(var(--accent))"
-        stroke="hsl(var(--background))"
-        strokeWidth={1.5}
-        pointerEvents="none"
-      />
+        onMouseLeave={() => onDotLeave?.()} />
+      <circle cx={cx} cy={cy} r={6} fill="hsl(var(--accent))" stroke="hsl(var(--background))" strokeWidth={1.5} pointerEvents="none" />
     </g>
   );
 }
@@ -294,7 +279,9 @@ export default function Experimental() {
     return getDefaultInflation();
   });
 
-  // Auto-save inflation to localStorage
+  const [showAllDays, setShowAllDays] = useState(false);
+  const [selectedAuditTicker, setSelectedAuditTicker] = useState<string>('');
+
   useEffect(() => {
     localStorage.setItem('experimental_inflation', JSON.stringify(inflation));
   }, [inflation]);
@@ -336,17 +323,29 @@ export default function Experimental() {
     return map;
   }, [cerProjection]);
 
+  // Enriched projected rows with audit fields
   const projectedRows = useMemo(() => {
     return cerRows.map(inst => {
       const cerDateStr = formatDateISO(inst.cerRelevantDate);
       const projectedCER = cerLookup[cerDateStr] ?? null;
-      if (!projectedCER || !inst.cerInicial || inst.price <= 0) {
-        return { ...inst, projectedCER: null, tna180Proj: null };
+      const cerInicial = inst.cerInicial ?? null;
+      if (!projectedCER || !cerInicial || inst.price <= 0) {
+        return {
+          ...inst, projectedCER: null, tna180Proj: null,
+          cerInicial: cerInicial, factorCER: null, precioRelativo: null,
+          adjustedFace: null, ratio: null, retornoAcumulado: null,
+        };
       }
-      const adjustedFace = 100 * projectedCER / inst.cerInicial;
+      const factorCER = projectedCER / cerInicial;
+      const adjustedFace = 100 * factorCER;
+      const precioRelativo = inst.price / 100;
       const ratio = adjustedFace / inst.price;
+      const retornoAcumulado = ratio - 1;
       const tna180 = inst.d360 > 0 ? (Math.pow(ratio, 180 / inst.d360) - 1) * 2 * 100 : 0;
-      return { ...inst, projectedCER, tna180Proj: tna180 };
+      return {
+        ...inst, projectedCER, tna180Proj: tna180,
+        cerInicial, factorCER, precioRelativo, adjustedFace, ratio, retornoAcumulado,
+      };
     });
   }, [cerRows, cerLookup]);
 
@@ -357,15 +356,8 @@ export default function Experimental() {
   }, [projectedRows]);
 
   const trendLine = useMemo(() => calcLogTrend(curvePoints), [curvePoints]);
-
-  // Separate data: trend line gets its own sorted array, scatter points stay separate
-  const trendData = useMemo(() => {
-    return [...trendLine].sort((a, b) => a.duration - b.duration);
-  }, [trendLine]);
-
-  const scatterData = useMemo(() => {
-    return curvePoints.map(p => ({ ...p }));
-  }, [curvePoints]);
+  const trendData = useMemo(() => [...trendLine].sort((a, b) => a.duration - b.duration), [trendLine]);
+  const scatterData = useMemo(() => curvePoints.map(p => ({ ...p })), [curvePoints]);
 
   const projectionSample = useMemo(() => {
     if (cerProjection.length <= 30) return cerProjection;
@@ -374,6 +366,8 @@ export default function Experimental() {
     const last = cerProjection.slice(-5);
     return [...first, ...mid, ...last];
   }, [cerProjection]);
+
+  const tableCData = showAllDays ? cerProjection : projectionSample;
 
   const timestamp = livePrices?.timestamp
     ? new Date(livePrices.timestamp).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -404,6 +398,19 @@ export default function Experimental() {
     setInflation(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  // Audit card data for selected ticker
+  const auditData = useMemo(() => {
+    if (!selectedAuditTicker) return null;
+    const row = projectedRows.find(r => r.ticker === selectedAuditTicker);
+    if (!row) return null;
+
+    // Find the CER projection row for the relevant date
+    const cerDateStr = formatDateISO(row.cerRelevantDate);
+    const projRow = cerProjection.find(r => r.dateStr === cerDateStr);
+
+    return { row, projRow };
+  }, [selectedAuditTicker, projectedRows, cerProjection]);
+
   // ─── Gate: require Advanced Mode ───
   if (!isAdvanced) {
     return (
@@ -430,6 +437,8 @@ export default function Experimental() {
 
   const thClass = "text-right py-2.5 px-3 text-[10px] uppercase tracking-wider font-medium text-muted-foreground";
   const tdClass = "py-2.5 px-3 font-mono text-xs text-right";
+  const auditThClass = "text-right py-2 px-2 text-[9px] uppercase tracking-wider font-medium text-accent/70";
+  const auditTdClass = "py-2 px-2 font-mono text-[11px] text-right text-accent/90";
 
   return (
     <div className="min-h-screen">
@@ -562,21 +571,30 @@ export default function Experimental() {
           </div>
         </section>
 
-        {/* BLOQUE C — CER Official + Projected */}
+        {/* BLOQUE C — CER Official + Projected (with audit columns) */}
         <section>
           <div className="terminal-card overflow-hidden">
-            <div className="px-4 py-2 border-b border-border/50">
+            <div className="px-4 py-2 border-b border-border/50 flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
                 C · CER Oficial + Proyectado · {cerProjection.length} días
                 {lastOfficialCER && lastOfficialDate && (
                   <span className="ml-3">· Último oficial: {lastOfficialCER.toFixed(4)} ({formatDateShort(lastOfficialDate)})</span>
                 )}
               </span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAllDays}
+                  onChange={e => setShowAllDays(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-[10px] text-muted-foreground font-mono">Ver todos los días ({cerProjection.length})</span>
+              </label>
             </div>
             {!lastOfficialCER || !lastOfficialDate ? (
               <div className="p-4 text-xs text-destructive font-mono">⚠ No se pudo obtener el CER oficial del BCRA para proyectar.</div>
             ) : (
-              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-b border-border">
@@ -584,23 +602,27 @@ export default function Experimental() {
                       <th className={thClass}>CER</th>
                       <th className={thClass}>Tipo</th>
                       <th className={thClass}>Tramo inflación</th>
+                      <th className={auditThClass}>Inflación %</th>
+                      <th className={auditThClass}>Días tramo</th>
+                      <th className={auditThClass}>Daily pace %</th>
+                      <th className={auditThClass}>CER anterior</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {projectionSample.map((row, i) => {
-                      const infMonth = getInflationMonthForDate(row.date);
-                      const infLabel = `${MONTH_NAMES[infMonth.month]} ${infMonth.year}`;
-                      return (
-                        <tr key={i} className="border-b border-border/30">
-                          <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{formatDateShort(row.date)}</td>
-                          <td className={tdClass}>{row.cer.toFixed(4)}</td>
-                          <td className={`${tdClass} ${row.isOfficial ? 'text-positive' : 'text-accent'}`}>
-                            {row.isOfficial ? 'Oficial' : 'Proyectado'}
-                          </td>
-                          <td className={`${tdClass} text-muted-foreground`}>{row.isOfficial ? '—' : infLabel}</td>
-                        </tr>
-                      );
-                    })}
+                    {tableCData.map((row, i) => (
+                      <tr key={i} className="border-b border-border/30">
+                        <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{formatDateShort(row.date)}</td>
+                        <td className={tdClass}>{row.cer.toFixed(4)}</td>
+                        <td className={`${tdClass} ${row.isOfficial ? 'text-positive' : 'text-accent'}`}>
+                          {row.isOfficial ? 'Oficial' : 'Proyectado'}
+                        </td>
+                        <td className={`${tdClass} text-muted-foreground`}>{row.tramoLabel ?? '—'}</td>
+                        <td className={auditTdClass}>{row.inflationRate !== null ? `${(row.inflationRate * 100).toFixed(2)}%` : '—'}</td>
+                        <td className={auditTdClass}>{row.tramoDays ?? '—'}</td>
+                        <td className={auditTdClass}>{row.dailyPace !== null ? `${(row.dailyPace * 100).toFixed(6)}%` : '—'}</td>
+                        <td className={auditTdClass}>{row.prevCER !== null ? row.prevCER.toFixed(4) : '—'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -608,12 +630,12 @@ export default function Experimental() {
           </div>
         </section>
 
-        {/* RESULTS — Projected rates */}
+        {/* RESULTS — Projected rates (with audit columns) */}
         <section>
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                Resultado · Tasas CER Proyectadas
+                Resultado · Tasas CER Proyectadas (con auditoría)
               </span>
             </div>
             <div className="overflow-x-auto">
@@ -624,19 +646,37 @@ export default function Experimental() {
                     <th className={thClass}>Precio</th>
                     <th className={thClass}>Vto</th>
                     <th className={thClass}>Fecha CER (T-10)</th>
-                    <th className={thClass}>CER Proyectado</th>
+                    <th className={thClass}>CER Inicial</th>
+                    <th className={thClass}>CER Proy.</th>
+                    <th className={auditThClass}>Factor CER</th>
+                    <th className={auditThClass}>Precio Rel.</th>
+                    <th className={auditThClass}>Adj. Face</th>
+                    <th className={auditThClass}>Ratio</th>
+                    <th className={auditThClass}>Días 360</th>
+                    <th className={auditThClass}>Ret. Acum.</th>
                     <th className={thClass}>TNA 180 Proy.</th>
                     <th className={thClass}>Duration</th>
                   </tr>
                 </thead>
                 <tbody>
                   {projectedRows.map(inst => (
-                    <tr key={inst.ticker} className="border-b border-border/30 table-row-hover">
+                    <tr
+                      key={inst.ticker}
+                      className={`border-b border-border/30 table-row-hover cursor-pointer ${selectedAuditTicker === inst.ticker ? 'bg-accent/10' : ''}`}
+                      onClick={() => setSelectedAuditTicker(prev => prev === inst.ticker ? '' : inst.ticker)}
+                    >
                       <td className="py-2.5 px-3 font-mono text-xs font-semibold text-ticker">{inst.ticker}</td>
                       <td className={tdClass}>{inst.price > 0 ? `$${inst.price.toFixed(2)}` : '—'}</td>
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.matDate)}</td>
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.cerRelevantDate)}</td>
+                      <td className={tdClass}>{inst.cerInicial ? inst.cerInicial.toFixed(4) : '—'}</td>
                       <td className={tdClass}>{inst.projectedCER ? inst.projectedCER.toFixed(4) : '—'}</td>
+                      <td className={auditTdClass}>{inst.factorCER ? inst.factorCER.toFixed(6) : '—'}</td>
+                      <td className={auditTdClass}>{inst.precioRelativo ? inst.precioRelativo.toFixed(4) : '—'}</td>
+                      <td className={auditTdClass}>{inst.adjustedFace ? inst.adjustedFace.toFixed(4) : '—'}</td>
+                      <td className={auditTdClass}>{inst.ratio ? inst.ratio.toFixed(6) : '—'}</td>
+                      <td className={auditTdClass}>{inst.d360}</td>
+                      <td className={auditTdClass}>{inst.retornoAcumulado !== null && inst.retornoAcumulado !== undefined ? `${(inst.retornoAcumulado * 100).toFixed(2)}%` : '—'}</td>
                       <td className={tdClass}>
                         {inst.tna180Proj !== null ? `${inst.tna180Proj >= 0 ? '+' : ''}${inst.tna180Proj.toFixed(2)}%` : '—'}
                       </td>
@@ -648,6 +688,130 @@ export default function Experimental() {
             </div>
           </div>
         </section>
+
+        {/* AUDIT CARD — Per-ticker audit */}
+        {auditData && auditData.row && (
+          <section>
+            <div className="terminal-card overflow-hidden border-accent/30">
+              <div className="px-4 py-2 border-b border-accent/20 bg-accent/5 flex items-center justify-between">
+                <span className="text-[10px] text-accent font-mono uppercase tracking-widest">
+                  🔍 Auditoría · {auditData.row.ticker}
+                </span>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={selectedAuditTicker}
+                    onChange={e => setSelectedAuditTicker(e.target.value)}
+                    className="bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+                  >
+                    <option value="">— Seleccionar ticker —</option>
+                    {projectedRows.map(r => (
+                      <option key={r.ticker} value={r.ticker}>{r.ticker}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => setSelectedAuditTicker('')} className="text-[10px] text-muted-foreground hover:text-foreground">✕</button>
+                </div>
+              </div>
+              <div className="p-4 space-y-4">
+                {/* Basic info */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Ticker', value: auditData.row.ticker },
+                    { label: 'Precio', value: auditData.row.price > 0 ? `$${auditData.row.price.toFixed(2)}` : '—' },
+                    { label: 'Vencimiento', value: formatDateShort(auditData.row.matDate) },
+                    { label: 'Fecha CER (T-10)', value: formatDateShort(auditData.row.cerRelevantDate) },
+                  ].map(item => (
+                    <div key={item.label} className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
+                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CER info */}
+                <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'CER Inicial', value: auditData.row.cerInicial ? auditData.row.cerInicial.toFixed(4) : '—' },
+                    { label: 'CER Proyectado', value: auditData.row.projectedCER ? auditData.row.projectedCER.toFixed(4) : '—' },
+                    { label: 'Factor CER', value: auditData.row.factorCER ? auditData.row.factorCER.toFixed(6) : '—' },
+                    { label: 'Fecha CER tabla', value: formatDateISO(auditData.row.cerRelevantDate) },
+                  ].map(item => (
+                    <div key={item.label} className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
+                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tramo info from projection row */}
+                {auditData.projRow && (
+                  <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Tramo inflación', value: auditData.projRow.tramoLabel ?? '—' },
+                      { label: 'Inflación mensual', value: auditData.projRow.inflationRate !== null ? `${(auditData.projRow.inflationRate * 100).toFixed(2)}%` : '—' },
+                      { label: 'Daily pace', value: auditData.projRow.dailyPace !== null ? `${(auditData.projRow.dailyPace * 100).toFixed(6)}%` : '—' },
+                      { label: 'Días tramo', value: auditData.projRow.tramoDays?.toString() ?? '—' },
+                    ].map(item => (
+                      <div key={item.label} className="space-y-0.5">
+                        <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
+                        <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Calculation steps */}
+                <div className="border-t border-border/30 pt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Precio relativo', value: auditData.row.precioRelativo ? auditData.row.precioRelativo.toFixed(4) : '—' },
+                    { label: 'Adjusted Face', value: auditData.row.adjustedFace ? auditData.row.adjustedFace.toFixed(4) : '—' },
+                    { label: 'Ratio (AF/P)', value: auditData.row.ratio ? auditData.row.ratio.toFixed(6) : '—' },
+                    { label: 'Retorno acumulado', value: auditData.row.retornoAcumulado != null ? `${(auditData.row.retornoAcumulado * 100).toFixed(2)}%` : '—' },
+                  ].map(item => (
+                    <div key={item.label} className="space-y-0.5">
+                      <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">{item.label}</div>
+                      <div className="text-xs font-mono font-semibold text-foreground">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Formula reconstruction */}
+                <div className="border-t border-border/30 pt-3 space-y-2">
+                  <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider">Fórmula reconstruida</div>
+                  <div className="bg-card border border-border/40 rounded p-3 font-mono text-xs text-foreground space-y-1">
+                    <p>Factor CER = CER_proy / CER_ini = {auditData.row.projectedCER?.toFixed(4) ?? '?'} / {auditData.row.cerInicial?.toFixed(4) ?? '?'} = {auditData.row.factorCER?.toFixed(6) ?? '?'}</p>
+                    <p>Adjusted Face = 100 × {auditData.row.factorCER?.toFixed(6) ?? '?'} = {auditData.row.adjustedFace?.toFixed(4) ?? '?'}</p>
+                    <p>Ratio = {auditData.row.adjustedFace?.toFixed(4) ?? '?'} / {auditData.row.price.toFixed(2)} = {auditData.row.ratio?.toFixed(6) ?? '?'}</p>
+                    <p>Días 360 = {auditData.row.d360}</p>
+                    <p className="text-accent font-semibold">TNA 180 = (ratio^(180/{auditData.row.d360}) - 1) × 2 × 100 = ({auditData.row.ratio?.toFixed(6) ?? '?'}^{auditData.row.d360 > 0 ? (180 / auditData.row.d360).toFixed(6) : '?'} - 1) × 200</p>
+                    <p className="text-accent font-semibold text-sm">= {auditData.row.tna180Proj !== null ? `${auditData.row.tna180Proj.toFixed(4)}%` : '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Ticker selector when no audit is shown */}
+        {!selectedAuditTicker && projectedRows.length > 0 && (
+          <section>
+            <div className="terminal-card overflow-hidden">
+              <div className="px-4 py-3 flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">🔍 Auditar ticker:</span>
+                <select
+                  value=""
+                  onChange={e => setSelectedAuditTicker(e.target.value)}
+                  className="bg-transparent border border-border/40 rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+                >
+                  <option value="">— Seleccionar —</option>
+                  {projectedRows.map(r => (
+                    <option key={r.ticker} value={r.ticker}>{r.ticker}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-muted-foreground font-mono">o hacé click en una fila de la tabla de resultados</span>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* CHART — Projected Yield Curve with Log Trend */}
         <section>
