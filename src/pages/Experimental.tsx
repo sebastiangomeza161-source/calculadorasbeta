@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 import { useHolidays } from '@/hooks/useHolidays';
+import { useInflationInputs } from '@/hooks/useInflationInputs';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2, ChevronDown } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
@@ -68,27 +69,7 @@ function parseLocalDate(s: string): Date {
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-interface InflationEntry {
-  year: number;
-  month: number;
-  label: string;
-  rate: number;
-}
-
-function getDefaultInflation(): InflationEntry[] {
-  const today = new Date();
-  const entries: InflationEntry[] = [];
-  for (let i = -2; i < 24; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-    entries.push({
-      year: d.getFullYear(),
-      month: d.getMonth(),
-      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
-      rate: 0.025,
-    });
-  }
-  return entries;
-}
+type InflationEntry = import('@/hooks/useInflationInputs').InflationEntry;
 
 // ─── Tramo logic ───
 
@@ -290,23 +271,10 @@ export default function Experimental() {
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
   const { data: cerData } = useCER();
-  const [inflation, setInflation] = useState<InflationEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('experimental_inflation');
-      if (saved) {
-        const parsed = JSON.parse(saved) as InflationEntry[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return getDefaultInflation();
-  });
+  const { inflation, setInflation, loading: inflationLoading } = useInflationInputs();
 
   const [showAllDays, setShowAllDays] = useState(false);
   const [selectedAuditTicker, setSelectedAuditTicker] = useState<string>('');
-
-  useEffect(() => {
-    localStorage.setItem('experimental_inflation', JSON.stringify(inflation));
-  }, [inflation]);
 
   const allCer = useMemo(() => [...CER_INSTRUMENTS, ...custom.filter(i => i.type === 'CER')], [custom]);
   const lastOfficialCER = cerData?.latestCer ?? cerData?.cer ?? null;
