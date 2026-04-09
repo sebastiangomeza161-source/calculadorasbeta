@@ -6,6 +6,7 @@ import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
+import { useHolidays } from '@/hooks/useHolidays';
 import { daysUntil, calcLecap, calcCer, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft } from 'lucide-react';
 
