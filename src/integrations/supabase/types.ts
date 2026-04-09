@@ -89,6 +89,33 @@ export type Database = {
         }
         Relationships: []
       }
+      inflation_inputs: {
+        Row: {
+          id: string
+          label: string
+          month: number
+          rate: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          id?: string
+          label?: string
+          month: number
+          rate?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          month?: number
+          rate?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       maturity_overrides: {
         Row: {
           maturity_date: string
