@@ -75,7 +75,7 @@ export default function ProjectedCurve({ curvePoints, inflation }: Props) {
         Curva proyectada · TNA 180 con CER proyectado
       </h3>
       <p className="text-[9px] text-muted-foreground/70 font-mono mb-3">
-        Curva proyectada basada en cálculos con inflación futura · Los datos provienen de la hoja experimental
+        Curva proyectada basada en cálculos con inflación futura · Fuente: cálculo interno
       </p>
       <div className="relative">
         <ResponsiveContainer width="100%" height={280}>
