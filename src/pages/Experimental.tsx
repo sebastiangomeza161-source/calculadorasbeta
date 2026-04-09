@@ -353,7 +353,7 @@ export default function Experimental() {
       const cerInicial = inst.cerInicial ?? null;
       if (!projectedCER || !cerInicial || inst.price <= 0) {
         return {
-          ...inst, projectedCER: null, tna180Proj: null,
+          ...inst, projectedCER: null, tnaProj: null as number | null,
           cerInicial: cerInicial, factorCER: null, precioRelativo: null,
           adjustedFace: null, ratio: null, retornoAcumulado: null,
         };
