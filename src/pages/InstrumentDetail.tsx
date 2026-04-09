@@ -5,6 +5,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
+import { useHolidays } from '@/hooks/useHolidays';
 import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
 import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
 
