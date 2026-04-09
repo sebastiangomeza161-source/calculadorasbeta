@@ -311,14 +311,14 @@ export default function Experimental() {
 
   const trendLine = useMemo(() => calcLogTrend(curvePoints), [curvePoints]);
 
-  // Merge scatter + trend for ComposedChart
-  const chartData = useMemo(() => {
-    const merged = curvePoints.map(p => ({ ...p, yieldTrend: undefined as number | undefined }));
-    for (const t of trendLine) {
-      merged.push({ ticker: '', duration: t.duration, yield: undefined as any, yieldTrend: t.yieldTrend });
-    }
-    return merged.sort((a, b) => a.duration - b.duration);
-  }, [curvePoints, trendLine]);
+  // Separate data: trend line gets its own sorted array, scatter points stay separate
+  const trendData = useMemo(() => {
+    return [...trendLine].sort((a, b) => a.duration - b.duration);
+  }, [trendLine]);
+
+  const scatterData = useMemo(() => {
+    return curvePoints.map(p => ({ ...p }));
+  }, [curvePoints]);
 
   const projectionSample = useMemo(() => {
     if (cerProjection.length <= 30) return cerProjection;
