@@ -330,7 +330,7 @@ export default function Experimental() {
       })
       .filter(r => r.days > 0)
       .sort((a, b) => a.days - b.days);
-  }, [allCer, livePrices, getEffectiveMaturity]);
+  }, [allCer, livePrices, getEffectiveMaturity, holidayDatesSet]);
 
   const maxCerDate = useMemo(() => {
     return cerRows.reduce((max, r) => (r.cerRelevantDate > max ? r.cerRelevantDate : max), new Date());
