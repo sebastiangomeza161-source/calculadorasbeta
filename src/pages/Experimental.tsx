@@ -630,13 +630,14 @@ export default function Experimental() {
           </div>
         </section>
 
-        {/* RESULTS — Projected rates (with audit columns) */}
+        {/* RESULTS — Projected rates (clean) */}
         <section>
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                Resultado · Tasas CER Proyectadas (con auditoría)
+                Resultado · Tasas CER Proyectadas
               </span>
+              <span className="text-[10px] text-muted-foreground/60 font-mono ml-3">click en una fila para auditar</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -648,12 +649,7 @@ export default function Experimental() {
                     <th className={thClass}>Fecha CER (T-10)</th>
                     <th className={thClass}>CER Inicial</th>
                     <th className={thClass}>CER Proy.</th>
-                    <th className={auditThClass}>Factor CER</th>
-                    <th className={auditThClass}>Precio Rel.</th>
-                    <th className={auditThClass}>Adj. Face</th>
-                    <th className={auditThClass}>Ratio</th>
-                    <th className={auditThClass}>Días 360</th>
-                    <th className={auditThClass}>Ret. Acum.</th>
+                    <th className={thClass}>Días</th>
                     <th className={thClass}>TNA 180 Proy.</th>
                     <th className={thClass}>Duration</th>
                   </tr>
@@ -671,12 +667,7 @@ export default function Experimental() {
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.cerRelevantDate)}</td>
                       <td className={tdClass}>{inst.cerInicial ? inst.cerInicial.toFixed(4) : '—'}</td>
                       <td className={tdClass}>{inst.projectedCER ? inst.projectedCER.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.factorCER ? inst.factorCER.toFixed(6) : '—'}</td>
-                      <td className={auditTdClass}>{inst.precioRelativo ? inst.precioRelativo.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.adjustedFace ? inst.adjustedFace.toFixed(4) : '—'}</td>
-                      <td className={auditTdClass}>{inst.ratio ? inst.ratio.toFixed(6) : '—'}</td>
-                      <td className={auditTdClass}>{inst.d360}</td>
-                      <td className={auditTdClass}>{inst.retornoAcumulado !== null && inst.retornoAcumulado !== undefined ? `${(inst.retornoAcumulado * 100).toFixed(2)}%` : '—'}</td>
+                      <td className={tdClass}>{inst.d360}</td>
                       <td className={tdClass}>
                         {inst.tna180Proj !== null ? `${inst.tna180Proj >= 0 ? '+' : ''}${inst.tna180Proj.toFixed(2)}%` : '—'}
                       </td>
