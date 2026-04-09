@@ -95,7 +95,7 @@ export default function InstrumentTable({ instruments, lastCER, manualPrices, on
                   {days}
                 </td>
                 <td className="py-3 px-4 font-mono text-xs text-right font-medium">
-                  {price > 0 ? `$${price.toFixed(2)}` : '—'}
+                  {price > 0 ? `$${price.toFixed(3)}` : '—'}
                 </td>
                 <td className="py-1 px-2 text-right" onClick={(e) => e.stopPropagation()}>
                   <input

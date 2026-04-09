@@ -9,13 +9,21 @@ import { useHolidays } from '@/hooks/useHolidays';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
+import ProjectedCurve from '@/components/ProjectedCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
+import { useProjectedCER } from '@/hooks/useProjectedCER';
 import HolidayManager from '@/components/HolidayManager';
 import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck, Calculator, FlaskConical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 
 type TabType = 'LECAP' | 'CER';
+
+function ProjectedCurveSection() {
+  const { curvePoints, inflation } = useProjectedCER();
+  if (curvePoints.length === 0) return null;
+  return <ProjectedCurve curvePoints={curvePoints} inflation={inflation} />;
+}
 
 export default function Index() {
   const navigate = useNavigate();
@@ -319,6 +327,9 @@ export default function Index() {
           data={curveData}
           yLabel={activeTab === 'LECAP' ? 'TNA' : 'TNA 180'}
         />
+
+        {/* Projected CER curve (only in CER tab) */}
+        {activeTab === 'CER' && <ProjectedCurveSection />}
 
       </main>
 

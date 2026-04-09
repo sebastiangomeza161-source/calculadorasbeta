@@ -160,7 +160,7 @@ export default function InstrumentDetail() {
             <InfoCell label="Duration" value={`${(days / 365).toFixed(2)}y`} />
             <InfoCell
               label="Precio mercado"
-              value={livePrice > 0 ? `$${livePrice.toFixed(2)}` : 'Sin datos'}
+              value={livePrice > 0 ? `$${livePrice.toFixed(3)}` : 'Sin datos'}
             />
             {instrument.type === 'LECAP' && instrument.redemptionValue && (
               <InfoCell label="Pago al vto" value={`$${instrument.redemptionValue.toFixed(3)}`} />
@@ -203,7 +203,7 @@ export default function InstrumentDetail() {
                 type="number"
                 value={manualPrice}
                 onChange={(e) => setManualPrice(e.target.value)}
-                placeholder={livePrice > 0 ? livePrice.toFixed(2) : '0.00'}
+                placeholder={livePrice > 0 ? livePrice.toFixed(3) : '0.000'}
                 className="input-field"
                 step="0.01"
               />
