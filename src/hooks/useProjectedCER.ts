@@ -216,7 +216,7 @@ export function useProjectedCER() {
   const { data: livePrices } = useLivePrices(customTickers);
   const { data: cerData } = useCER();
 
-  const inflation = useMemo(() => readInflationFromStorage(), []);
+  const { inflation } = useInflationInputs();
 
   const lastOfficialCER = cerData?.latestCer ?? cerData?.cer ?? null;
   const lastOfficialDate = cerData?.latestDate ? (() => {
