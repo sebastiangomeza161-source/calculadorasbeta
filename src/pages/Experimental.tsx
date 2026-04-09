@@ -94,34 +94,32 @@ function getDefaultInflation(): InflationEntry[] {
 
 /**
  * Given a date D, determine which inflation month drives the CER for that day.
- * Rule: inflation of month M applies to the tramo from 16/(M+2) to 15/(M+3).
+ * Rule: inflation of month M applies from 16/(M+1) to 15/(M+2).
+ * Examples:
+ *   - Inflation Feb → 16/Mar to 15/Apr
+ *   - Inflation Mar → 16/Apr to 15/May
  * So for a date D:
- *   - If day >= 16, it's in the tramo starting on the 16th of this month.
- *     The tramo 16/X to 15/(X+1) uses inflation of month (X-2).
- *   - If day <= 15, it's in the tramo starting on the 16th of the previous month.
- *     The tramo 16/(X-1) to 15/X uses inflation of month (X-3).
+ *   - If day >= 16, tramo starts this month's 16th → inflation month = this month - 1
+ *   - If day <= 15, tramo started previous month's 16th → inflation month = this month - 2
  */
 function getInflationMonthForDate(d: Date): { year: number; month: number } {
   const day = d.getDate();
   if (day >= 16) {
-    // Tramo starts this month's 16th → inflation month = this month - 2
-    const inf = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+    const inf = new Date(d.getFullYear(), d.getMonth() - 1, 1);
     return { year: inf.getFullYear(), month: inf.getMonth() };
   } else {
-    // Tramo started previous month's 16th → inflation month = previous month - 2 = this month - 3
-    const inf = new Date(d.getFullYear(), d.getMonth() - 3, 1);
+    const inf = new Date(d.getFullYear(), d.getMonth() - 2, 1);
     return { year: inf.getFullYear(), month: inf.getMonth() };
   }
 }
 
 /**
  * Get the tramo date range for an inflation month M.
- * Inflation of month M applies from 16/(M+2) to 15/(M+3).
+ * Inflation of month M applies from 16/(M+1) to 15/(M+2).
  */
 function getTramoForMonth(year: number, month: number): { start: Date; end: Date; days: number } {
-  // M+2 month's 16th to M+3 month's 15th
-  const start = new Date(year, month + 2, 16);
-  const end = new Date(year, month + 3, 15);
+  const start = new Date(year, month + 1, 16);
+  const end = new Date(year, month + 2, 15);
   const diffMs = end.getTime() - start.getTime();
   const days = Math.round(diffMs / 86400000) + 1;
   return { start, end, days };
@@ -536,7 +534,7 @@ export default function Experimental() {
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+2) al 15/(M+3)
+                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+1) al 15/(M+2)
               </span>
             </div>
             <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
