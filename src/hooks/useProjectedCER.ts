@@ -5,6 +5,7 @@ import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useHolidays } from '@/hooks/useHolidays';
+import { useInflationInputs } from '@/hooks/useInflationInputs';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
 
 // ─── Types ───
