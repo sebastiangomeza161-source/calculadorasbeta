@@ -152,7 +152,7 @@ export default function ProjectedCurve({ curvePoints, inflation }: Props) {
           Inflación mensual utilizada en la proyección
         </h4>
         <p className="text-[9px] text-muted-foreground/60 font-mono mb-3">
-          Tabla de referencia · Editable solo desde la vista experimental
+          Tabla de referencia · Fuente: cálculo interno
         </p>
         <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
           <table className="w-full text-sm">
