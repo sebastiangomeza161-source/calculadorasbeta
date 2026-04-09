@@ -91,9 +91,10 @@ export function calcLecap(
   maturityDate: string,
   redemptionValue: number,
   tPlus: number = 1,
-  commissionTNA: number = 0
+  commissionTNA: number = 0,
+  holidaySet?: Set<string>
 ): LecapResult | null {
-  const days = daysUntil(maturityDate, tPlus);
+  const days = daysUntil(maturityDate, tPlus, holidaySet);
   if (days <= 0 || price <= 0 || redemptionValue <= 0) return null;
 
   const duration = days / 365;
@@ -157,13 +158,14 @@ export function calcCer(
   cerInicial: number,
   lastCER: number,
   tPlus: number = 1,
-  commissionTNA: number = 0
+  commissionTNA: number = 0,
+  holidaySet?: Set<string>
 ): CerResult | null {
-  const days = daysUntil(maturityDate, tPlus);
+  const days = daysUntil(maturityDate, tPlus, holidaySet);
   if (days <= 0 || price <= 0 || cerInicial <= 0 || lastCER <= 0) return null;
 
   const adjustedFace = 100 * lastCER / cerInicial;
-  const settlement = getSettlementDate(tPlus);
+  const settlement = getSettlementDate(tPlus, holidaySet);
   const [my, mm, md] = maturityDate.split('-').map(Number);
   const days360Val = days360(settlement, new Date(my, mm - 1, md));
   const duration = days360Val / 360;
