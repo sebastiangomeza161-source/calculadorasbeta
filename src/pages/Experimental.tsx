@@ -516,7 +516,7 @@ export default function Experimental() {
                   {cerRows.map(inst => (
                     <tr key={inst.ticker} className="border-b border-border/30 table-row-hover">
                       <td className="py-2.5 px-3 font-mono text-xs font-semibold text-ticker">{inst.ticker}</td>
-                      <td className={tdClass}>{inst.price > 0 ? `$${inst.price.toFixed(2)}` : '—'}</td>
+<td className={tdClass}>{inst.price > 0 ? `$${inst.price.toFixed(3)}` : '—'}</td>
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.matDate)}</td>
                       <td className={tdClass}>{inst.days}</td>
                       <td className={tdClass}>{inst.duration.toFixed(2)}</td>
@@ -688,7 +688,7 @@ export default function Experimental() {
                       onClick={() => setSelectedAuditTicker(prev => prev === inst.ticker ? '' : inst.ticker)}
                     >
                       <td className="py-2.5 px-3 font-mono text-xs font-semibold text-ticker">{inst.ticker}</td>
-                      <td className={tdClass}>{inst.price > 0 ? `$${inst.price.toFixed(2)}` : '—'}</td>
+                      <td className={tdClass}>{inst.price > 0 ? `$${inst.price.toFixed(3)}` : '—'}</td>
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.matDate)}</td>
                       <td className={`${tdClass} text-muted-foreground`}>{formatDateShort(inst.cerRelevantDate)}</td>
                       <td className={tdClass}>{inst.cerInicial ? inst.cerInicial.toFixed(4) : '—'}</td>
