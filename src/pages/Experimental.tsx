@@ -69,27 +69,7 @@ function parseLocalDate(s: string): Date {
 
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-interface InflationEntry {
-  year: number;
-  month: number;
-  label: string;
-  rate: number;
-}
-
-function getDefaultInflation(): InflationEntry[] {
-  const today = new Date();
-  const entries: InflationEntry[] = [];
-  for (let i = -2; i < 24; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-    entries.push({
-      year: d.getFullYear(),
-      month: d.getMonth(),
-      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
-      rate: 0.025,
-    });
-  }
-  return entries;
-}
+type InflationEntry = import('@/hooks/useInflationInputs').InflationEntry;
 
 // ─── Tramo logic ───
 
