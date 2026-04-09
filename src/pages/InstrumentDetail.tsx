@@ -55,19 +55,19 @@ export default function InstrumentDetail() {
     if (instrument.type === 'LECAP' && instrument.redemptionValue) {
       return {
         type: 'LECAP' as const,
-        ...calcLecap(activePrice, effectiveMaturity, instrument.redemptionValue, activeTPlus, activeCommission)!,
+        ...calcLecap(activePrice, effectiveMaturity, instrument.redemptionValue, activeTPlus, activeCommission, holidayDatesSet)!,
       };
     }
 
     if (instrument.type === 'CER' && instrument.cerInicial && activeCER > 0) {
       return {
         type: 'CER' as const,
-        ...calcCer(activePrice, effectiveMaturity, instrument.cerInicial, activeCER, activeTPlus, activeCommission)!,
+        ...calcCer(activePrice, effectiveMaturity, instrument.cerInicial, activeCER, activeTPlus, activeCommission, holidayDatesSet)!,
       };
     }
 
     return null;
-  }, [instrument, activePrice, activeTPlus, activeCommission, activeCER, effectiveMaturity]);
+  }, [instrument, activePrice, activeTPlus, activeCommission, activeCER, effectiveMaturity, holidayDatesSet]);
 
   if (!instrument) {
     return (

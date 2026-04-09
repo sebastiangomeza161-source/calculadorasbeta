@@ -101,10 +101,10 @@ export default function Index() {
       if (origPrice > 0) {
         let yieldMarket = 0;
         if (activeTab === 'LECAP' && inst.redemptionValue) {
-          const r = calcLecap(origPrice, inst.maturityDate, inst.redemptionValue);
+          const r = calcLecap(origPrice, inst.maturityDate, inst.redemptionValue, 1, 0, holidayDatesSet);
           if (r) yieldMarket = r.tna;
         } else if (activeTab === 'CER' && inst.cerInicial && effectiveCER) {
-          const r = calcCer(origPrice, inst.maturityDate, inst.cerInicial, effectiveCER);
+          const r = calcCer(origPrice, inst.maturityDate, inst.cerInicial, effectiveCER, 1, 0, holidayDatesSet);
           if (r) yieldMarket = r.tna180;
         }
         if (yieldMarket !== 0) {
@@ -116,10 +116,10 @@ export default function Index() {
       if (inst.hasManualPrice) {
         let yieldManual = 0;
         if (activeTab === 'LECAP' && inst.redemptionValue) {
-          const r = calcLecap(inst.marketPrice, inst.maturityDate, inst.redemptionValue);
+          const r = calcLecap(inst.marketPrice, inst.maturityDate, inst.redemptionValue, 1, 0, holidayDatesSet);
           if (r) yieldManual = r.tna;
         } else if (activeTab === 'CER' && inst.cerInicial && effectiveCER) {
-          const r = calcCer(inst.marketPrice, inst.maturityDate, inst.cerInicial, effectiveCER);
+          const r = calcCer(inst.marketPrice, inst.maturityDate, inst.cerInicial, effectiveCER, 1, 0, holidayDatesSet);
           if (r) yieldManual = r.tna180;
         }
         if (yieldManual !== 0) {

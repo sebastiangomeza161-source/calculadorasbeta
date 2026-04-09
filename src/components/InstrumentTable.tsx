@@ -57,14 +57,14 @@ export default function InstrumentTable({ instruments, lastCER, manualPrices, on
 
             if (price > 0) {
               if (isLecap && inst.redemptionValue) {
-                const r = calcLecap(price, inst.maturityDate, inst.redemptionValue);
+                const r = calcLecap(price, inst.maturityDate, inst.redemptionValue, 1, 0, holidayDatesSet);
                 if (r) {
                   tna = formatPercent(r.tna);
                   secondary1 = formatPercent(r.tea);
                   secondary2 = formatPercent(r.tem);
                 }
               } else if (!isLecap && inst.cerInicial && lastCER && lastCER > 0) {
-                const r = calcCer(price, inst.maturityDate, inst.cerInicial, lastCER);
+                const r = calcCer(price, inst.maturityDate, inst.cerInicial, lastCER, 1, 0, holidayDatesSet);
                 if (r) {
                   tna = formatPercent(r.tna180);
                   secondary1 = formatPercent(r.tir);
