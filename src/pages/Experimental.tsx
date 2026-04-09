@@ -600,13 +600,14 @@ export default function Experimental() {
             <div className="p-4" style={{ height: 400 }}>
               {curvePoints.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+                  <ComposedChart margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                     <XAxis
                       dataKey="duration"
                       type="number"
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                       label={{ value: 'Duration', position: 'bottom', offset: -5, style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      allowDuplicatedCategory={false}
                     />
                     <YAxis
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -629,22 +630,22 @@ export default function Experimental() {
                       }}
                     />
                     <Line
+                      data={trendData}
                       dataKey="yieldTrend"
                       stroke="hsl(var(--muted-foreground))"
                       strokeWidth={1.5}
                       strokeDasharray="6 3"
                       dot={false}
-                      connectNulls={false}
                       isAnimationActive={false}
                       tooltipType="none"
                     />
                     <Scatter
+                      data={scatterData}
                       dataKey="yield"
                       fill="hsl(var(--accent))"
-                      r={5}
                       isAnimationActive={false}
                       shape={(props: any) => {
-                        if (props.payload?.ticker == null) return null;
+                        if (!props.payload?.ticker) return null;
                         return <circle cx={props.cx} cy={props.cy} r={6} fill="hsl(var(--accent))" stroke="hsl(var(--background))" strokeWidth={1.5} />;
                       }}
                     />
