@@ -316,6 +316,13 @@ export default function Index() {
           data={curveData}
           yLabel={activeTab === 'LECAP' ? 'TNA' : 'TNA 180'}
         />
+
+        {/* Holiday Manager (Advanced Mode only) */}
+        {isAdvanced && (
+          <div className="mt-6">
+            <HolidayManager />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
