@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 import { useHolidays } from '@/hooks/useHolidays';
+import { useInflationInputs } from '@/hooks/useInflationInputs';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2, ChevronDown } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
