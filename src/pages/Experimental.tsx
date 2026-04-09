@@ -636,6 +636,7 @@ export default function Experimental() {
                       strokeWidth={1.5}
                       strokeDasharray="6 3"
                       dot={false}
+                      activeDot={false}
                       isAnimationActive={false}
                       tooltipType="none"
                     />
