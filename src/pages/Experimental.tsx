@@ -679,6 +679,7 @@ export default function Experimental() {
                       content={<ProjectedCurveTooltip hoveredPoint={hoveredCurvePoint} />}
                       active={!!hoveredCurvePoint}
                       position={hoveredCurvePosition ?? undefined}
+                      wrapperStyle={{ pointerEvents: 'none', zIndex: 20 }}
                     />
                     <Line
                       data={trendData}
@@ -698,14 +699,6 @@ export default function Experimental() {
                       isAnimationActive={false}
                       shape={<ProjectedCurveDot onDotEnter={handleCurvePointEnter} onDotLeave={handleCurvePointLeave} />}
                     />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-xs text-muted-foreground font-mono">
-                  Sin datos para graficar
-                </div>
-              )}
-            </div>
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
