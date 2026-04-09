@@ -21,8 +21,30 @@ type TabType = 'LECAP' | 'CER';
 
 function ProjectedCurveSection() {
   const { curvePoints, inflation } = useProjectedCER();
+  const { getEffectiveMaturity } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
+  const { data: livePrices } = useLivePrices([]);
+  const { custom } = useCustomInstruments();
+
+  const lecapPoints = useMemo(() => {
+    const allLecaps = [...LECAPS, ...custom.filter(i => i.type === 'LECAP')];
+    const pts: { ticker: string; duration: number; yield: number }[] = [];
+    for (const inst of allLecaps) {
+      const maturity = getEffectiveMaturity(inst.ticker, inst.maturityDate);
+      const price = livePrices?.prices[inst.ticker]?.price ?? 0;
+      if (price <= 0 || !inst.redemptionValue) continue;
+      const days = daysUntil(maturity, 1, holidayDatesSet);
+      const duration = days / 360;
+      const r = calcLecap(price, maturity, inst.redemptionValue, 1, 0, holidayDatesSet);
+      if (r && r.tna !== 0) {
+        pts.push({ ticker: inst.ticker, duration, yield: r.tna });
+      }
+    }
+    return pts;
+  }, [livePrices, custom, getEffectiveMaturity, holidayDatesSet]);
+
   if (curvePoints.length === 0) return null;
-  return <ProjectedCurve curvePoints={curvePoints} inflation={inflation} />;
+  return <ProjectedCurve curvePoints={curvePoints} inflation={inflation} lecapPoints={lecapPoints} />;
 }
 
 export default function Index() {
