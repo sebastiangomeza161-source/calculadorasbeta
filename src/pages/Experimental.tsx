@@ -535,7 +535,7 @@ export default function Experimental() {
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                B · Inflación Mensual Esperada (editable) · Tramo: del 16 del mes al 15 del siguiente
+                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+2) al 15/(M+3)
               </span>
             </div>
             <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -558,7 +558,11 @@ export default function Experimental() {
                       <tr key={`${row.year}-${row.month}`} className="border-b border-border/30 table-row-hover">
                         <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{row.label}</td>
                         <td className={`${tdClass} text-muted-foreground`}>
-                          {`${row.month + 1}/16 → ${row.month === 11 ? 1 : row.month + 2}/15`}
+                          {(() => {
+                            const s = tramo.start;
+                            const e = tramo.end;
+                            return `${s.getDate()}/${s.getMonth() + 1} → ${e.getDate()}/${e.getMonth() + 1}`;
+                          })()}
                         </td>
                         <td className="py-1 px-2 text-right">
                           <input
