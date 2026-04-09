@@ -8,39 +8,32 @@ const corsHeaders = {
 
 const CER_XLS_URL = 'https://www.bcra.gob.ar/Pdfs/PublicacionesEstadisticas/diar_cer.xls';
 
-// Argentina public holidays 2025-2028
-const HOLIDAYS = new Set([
-  '2025-01-01','2025-02-24','2025-03-03','2025-03-24','2025-04-02','2025-04-18',
-  '2025-05-01','2025-05-26','2025-06-16','2025-06-20','2025-07-09','2025-08-18',
-  '2025-10-13','2025-11-17','2025-12-08','2025-12-25',
-  '2026-01-01','2026-02-16','2026-02-17','2026-03-24','2026-04-02','2026-04-03',
-  '2026-05-01','2026-05-25','2026-06-15','2026-06-20','2026-07-09','2026-08-17',
-  '2026-10-12','2026-11-23','2026-12-08','2026-12-25',
-]);
+function dateToISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
-function isBusinessDay(d: Date): boolean {
+function isBusinessDay(d: Date, holidaySet: Set<string>): boolean {
   const dow = d.getDay();
   if (dow === 0 || dow === 6) return false;
-  const iso = d.toISOString().split('T')[0];
-  return !HOLIDAYS.has(iso);
+  return !holidaySet.has(dateToISO(d));
 }
 
-function subtractBusinessDays(from: Date, n: number): Date {
-  const d = new Date(from);
-  let subtracted = 0;
-  while (subtracted < n) {
-    d.setDate(d.getDate() - 1);
-    if (isBusinessDay(d)) subtracted++;
-  }
-  return d;
-}
-
-function addBusinessDays(from: Date, n: number): Date {
+function addBusinessDays(from: Date, n: number, holidaySet: Set<string>): Date {
   const d = new Date(from);
   let added = 0;
   while (added < n) {
     d.setDate(d.getDate() + 1);
-    if (isBusinessDay(d)) added++;
+    if (isBusinessDay(d, holidaySet)) added++;
+  }
+  return d;
+}
+
+function subtractBusinessDays(from: Date, n: number, holidaySet: Set<string>): Date {
+  const d = new Date(from);
+  let subtracted = 0;
+  while (subtracted < n) {
+    d.setDate(d.getDate() - 1);
+    if (isBusinessDay(d, holidaySet)) subtracted++;
   }
   return d;
 }
@@ -114,20 +107,29 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Calculate dates in Argentina timezone
+    // Fetch holidays from database
+    const { data: holidayRows } = await supabase
+      .from('holidays')
+      .select('date');
+    const holidaySet = new Set<string>(
+      (holidayRows ?? []).map((r: { date: string }) => r.date)
+    );
+    console.log(`Loaded ${holidaySet.size} holidays from DB`);
+
+    // Today in Argentina timezone
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
     const todayDate = new Date(todayStr + 'T12:00:00');
 
-    // Settlement date = T+1 business day
-    const settlementDate = addBusinessDays(todayDate, 1);
-    const settlementDateStr = settlementDate.toISOString().split('T')[0];
+    // Settlement = today + 1 business day
+    const settlementDate = addBusinessDays(todayDate, 1, holidaySet);
+    const settlementDateStr = dateToISO(settlementDate);
 
-    // T-10 business days from today (for experimental/projected use)
-    const laggedDate = subtractBusinessDays(todayDate, 10);
-    const laggedDateStr = laggedDate.toISOString().split('T')[0];
+    // CER for calculations = settlement - 10 business days
+    const cerDate = subtractBusinessDays(settlementDate, 10, holidaySet);
+    const cerDateStr = dateToISO(cerDate);
 
-    console.log(`Settlement date (T+1): ${settlementDateStr}, T-10 date: ${laggedDateStr}`);
+    console.log(`Today: ${todayStr}, Settlement (T+1): ${settlementDateStr}, CER date (Sett-10): ${cerDateStr}`);
 
     const allRows = await fetchAllCERFromBCRA();
 
@@ -140,24 +142,17 @@ Deno.serve(async (req) => {
         { onConflict: 'date' }
       );
 
-      // CER for settlement date (for current market calculations)
-      const settlementCER = findCERForDate(allRows, settlementDateStr);
+      // CER for settlement - 10 (for current market calculations)
+      const cerForCalc = findCERForDate(allRows, cerDateStr);
 
-      // CER for T-10 (for experimental projected calculations)
-      const laggedCER = findCERForDate(allRows, laggedDateStr);
-
-      console.log(`Settlement CER: ${settlementCER?.value} (${settlementCER?.date}), Lagged CER: ${laggedCER?.value} (${laggedCER?.date}), Latest: ${latestRow.value} (${latestRow.date})`);
+      console.log(`CER for calc: ${cerForCalc?.value} (${cerForCalc?.date}), Latest: ${latestRow.value} (${latestRow.date})`);
 
       return new Response(JSON.stringify({
-        // CER for current market calculations (settlement date)
-        cer: settlementCER?.value ?? latestRow.value,
-        cerDate: settlementCER?.date ?? latestRow.date,
-        // Latest CER available
+        cer: cerForCalc?.value ?? latestRow.value,
+        cerDate: cerForCalc?.date ?? latestRow.date,
+        settlementDate: settlementDateStr,
         latestCer: latestRow.value,
         latestDate: latestRow.date,
-        // Legacy T-10 CER (kept for experimental view)
-        laggedCer: laggedCER?.value ?? null,
-        laggedDate: laggedCER?.date ?? null,
         lagDays: 10,
         source: 'bcra_api',
       }), {
@@ -177,10 +172,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         cer: Number(cached.value),
         cerDate: cached.date,
+        settlementDate: settlementDateStr,
         latestCer: Number(cached.value),
         latestDate: cached.date,
-        laggedCer: null,
-        laggedDate: null,
         lagDays: 10,
         source: 'cached',
       }), {
@@ -191,10 +185,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       cer: null,
       cerDate: null,
+      settlementDate: settlementDateStr,
       latestCer: null,
       latestDate: null,
-      laggedCer: null,
-      laggedDate: null,
       lagDays: 10,
       source: 'unavailable',
       error: 'No se pudo obtener el CER desde BCRA ni desde cache.',
