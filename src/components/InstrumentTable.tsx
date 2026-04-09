@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Instrument } from '@/data/instruments';
 import { daysUntil, calcLecap, calcCer, formatPercent } from '@/lib/calculations';
+import { useHolidays } from '@/hooks/useHolidays';
 
 interface EnrichedInstrument extends Instrument {
   marketPrice?: number;
@@ -17,6 +18,7 @@ interface InstrumentTableProps {
 
 export default function InstrumentTable({ instruments, lastCER, manualPrices, onManualPriceChange }: InstrumentTableProps) {
   const navigate = useNavigate();
+  const { holidayDatesSet } = useHolidays();
   const isLecap = instruments[0]?.type === 'LECAP';
 
   return (
@@ -48,7 +50,7 @@ export default function InstrumentTable({ instruments, lastCER, manualPrices, on
         <tbody>
           {instruments.map((inst) => {
             const price = inst.marketPrice ?? 0;
-            const days = daysUntil(inst.maturityDate);
+            const days = daysUntil(inst.maturityDate, 1, holidayDatesSet);
             let tna = '--';
             let secondary1 = '--';
             let secondary2 = '--';

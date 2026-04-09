@@ -5,10 +5,12 @@ import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
+import { useHolidays } from '@/hooks/useHolidays';
 import { calcLecap, calcCer, daysUntil } from '@/lib/calculations';
 import InstrumentTable from '@/components/InstrumentTable';
 import YieldCurve from '@/components/YieldCurve';
 import AddInstrumentModal from '@/components/AddInstrumentModal';
+import HolidayManager from '@/components/HolidayManager';
 import { Plus, Moon, Sun, Lock, Unlock, ShieldCheck, Calculator, FlaskConical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
@@ -18,6 +20,7 @@ type TabType = 'LECAP' | 'CER';
 export default function Index() {
   const navigate = useNavigate();
   const { getEffectiveMaturity } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
   const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('LECAP');
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,13 +87,13 @@ export default function Index() {
         change: livePrices?.prices[inst.ticker]?.change ?? null,
       };
     })
-    .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
+    .sort((a, b) => daysUntil(a.maturityDate, 1, holidayDatesSet) - daysUntil(b.maturityDate, 1, holidayDatesSet));
 
   const curveData = useMemo(() => {
     const points: { ticker: string; price: number; days: number; duration: number; yield: number; isManual?: boolean }[] = [];
 
     for (const inst of enriched) {
-      const days = daysUntil(inst.maturityDate);
+      const days = daysUntil(inst.maturityDate, 1, holidayDatesSet);
       const duration = days / 360;
 
       // Always add market point if original market price exists
@@ -313,6 +316,13 @@ export default function Index() {
           data={curveData}
           yLabel={activeTab === 'LECAP' ? 'TNA' : 'TNA 180'}
         />
+
+        {/* Holiday Manager (Advanced Mode only) */}
+        {isAdvanced && (
+          <div className="mt-6">
+            <HolidayManager />
+          </div>
+        )}
       </main>
 
       {/* Footer */}

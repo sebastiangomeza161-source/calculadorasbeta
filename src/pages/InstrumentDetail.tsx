@@ -5,6 +5,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useCER } from '@/hooks/useCER';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
+import { useHolidays } from '@/hooks/useHolidays';
 import { calcLecap, calcCer, formatPercent, formatDate, daysUntil } from '@/lib/calculations';
 import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function InstrumentDetail() {
   const { data: cerData } = useCER();
   const { isAdvanced } = useAdvancedMode();
   const { getEffectiveMaturity, saveOverride } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
 
   const livePrice = livePrices?.prices[ticker || '']?.price ?? 0;
   const liveChange = livePrices?.prices[ticker || '']?.change ?? null;
@@ -75,7 +77,7 @@ export default function InstrumentDetail() {
     );
   }
 
-  const days = daysUntil(effectiveMaturity, activeTPlus);
+  const days = daysUntil(effectiveMaturity, activeTPlus, holidayDatesSet);
 
   const handleStartEdit = () => {
     setMaturityInput(effectiveMaturity);

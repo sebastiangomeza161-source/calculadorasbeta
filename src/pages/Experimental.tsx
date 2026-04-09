@@ -7,6 +7,7 @@ import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
 import { useAdvancedMode } from '@/hooks/useAdvancedMode';
+import { useHolidays } from '@/hooks/useHolidays';
 import { daysUntil, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft, Lock, FlaskConical, Trash2, ChevronDown } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
@@ -31,13 +32,18 @@ function days360(start: Date, end: Date): number {
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
 }
 
-function subtractBusinessDays(date: Date, n: number): Date {
+function subtractBusinessDays(date: Date, n: number, holidaySet?: Set<string>): Date {
   const result = new Date(date);
   let count = 0;
   while (count < n) {
     result.setDate(result.getDate() - 1);
     const dow = result.getDay();
-    if (dow !== 0 && dow !== 6) count++;
+    if (dow === 0 || dow === 6) continue;
+    if (holidaySet) {
+      const iso = `${result.getFullYear()}-${String(result.getMonth() + 1).padStart(2, '0')}-${String(result.getDate()).padStart(2, '0')}`;
+      if (holidaySet.has(iso)) continue;
+    }
+    count++;
   }
   return result;
 }
@@ -86,19 +92,36 @@ function getDefaultInflation(): InflationEntry[] {
 
 // ─── Tramo logic ───
 
+/**
+ * Given a date D, determine which inflation month drives the CER for that day.
+ * Rule: inflation of month M applies to the tramo from 16/(M+2) to 15/(M+3).
+ * So for a date D:
+ *   - If day >= 16, it's in the tramo starting on the 16th of this month.
+ *     The tramo 16/X to 15/(X+1) uses inflation of month (X-2).
+ *   - If day <= 15, it's in the tramo starting on the 16th of the previous month.
+ *     The tramo 16/(X-1) to 15/X uses inflation of month (X-3).
+ */
 function getInflationMonthForDate(d: Date): { year: number; month: number } {
   const day = d.getDate();
-  if (day <= 15) {
-    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-    return { year: prev.getFullYear(), month: prev.getMonth() };
+  if (day >= 16) {
+    // Tramo starts this month's 16th → inflation month = this month - 2
+    const inf = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+    return { year: inf.getFullYear(), month: inf.getMonth() };
+  } else {
+    // Tramo started previous month's 16th → inflation month = previous month - 2 = this month - 3
+    const inf = new Date(d.getFullYear(), d.getMonth() - 3, 1);
+    return { year: inf.getFullYear(), month: inf.getMonth() };
   }
-  return { year: d.getFullYear(), month: d.getMonth() };
 }
 
+/**
+ * Get the tramo date range for an inflation month M.
+ * Inflation of month M applies from 16/(M+2) to 15/(M+3).
+ */
 function getTramoForMonth(year: number, month: number): { start: Date; end: Date; days: number } {
-  const start = new Date(year, month, 16);
-  const endMonth = month + 1;
-  const end = new Date(year, endMonth, 15);
+  // M+2 month's 16th to M+3 month's 15th
+  const start = new Date(year, month + 2, 16);
+  const end = new Date(year, month + 3, 15);
   const diffMs = end.getTime() - start.getTime();
   const days = Math.round(diffMs / 86400000) + 1;
   return { start, end, days };
@@ -264,6 +287,7 @@ export default function Experimental() {
   const { isAdvanced, activate } = useAdvancedMode();
   const { theme, toggle: toggleTheme } = useTheme();
   const { getEffectiveMaturity } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
   const { custom } = useCustomInstruments();
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
@@ -297,16 +321,16 @@ export default function Experimental() {
         const price = livePrices?.prices[inst.ticker]?.price ?? 0;
         const [my, mm, md] = maturity.split('-').map(Number);
         const matDate = new Date(my, mm - 1, md);
-        const cerRelevantDate = subtractBusinessDays(matDate, 10);
-        const settlement = getSettlementDate(1);
-        const days = daysUntil(maturity);
+        const cerRelevantDate = subtractBusinessDays(matDate, 10, holidayDatesSet);
+        const settlement = getSettlementDate(1, holidayDatesSet);
+        const days = daysUntil(maturity, 1, holidayDatesSet);
         const d360 = days360(settlement, matDate);
         const duration = d360 / 360;
         return { ...inst, maturityDate: maturity, price, matDate, cerRelevantDate, days, d360, duration };
       })
       .filter(r => r.days > 0)
       .sort((a, b) => a.days - b.days);
-  }, [allCer, livePrices, getEffectiveMaturity]);
+  }, [allCer, livePrices, getEffectiveMaturity, holidayDatesSet]);
 
   const maxCerDate = useMemo(() => {
     return cerRows.reduce((max, r) => (r.cerRelevantDate > max ? r.cerRelevantDate : max), new Date());
@@ -512,7 +536,7 @@ export default function Experimental() {
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                B · Inflación Mensual Esperada (editable) · Tramo: del 16 del mes al 15 del siguiente
+                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+2) al 15/(M+3)
               </span>
             </div>
             <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -535,7 +559,11 @@ export default function Experimental() {
                       <tr key={`${row.year}-${row.month}`} className="border-b border-border/30 table-row-hover">
                         <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{row.label}</td>
                         <td className={`${tdClass} text-muted-foreground`}>
-                          {`${row.month + 1}/16 → ${row.month === 11 ? 1 : row.month + 2}/15`}
+                          {(() => {
+                            const s = tramo.start;
+                            const e = tramo.end;
+                            return `${s.getDate()}/${s.getMonth() + 1} → ${e.getDate()}/${e.getMonth() + 1}`;
+                          })()}
                         </td>
                         <td className="py-1 px-2 text-right">
                           <input

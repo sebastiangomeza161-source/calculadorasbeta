@@ -6,6 +6,7 @@ import { useCER } from '@/hooks/useCER';
 import { useCustomInstruments } from '@/hooks/useCustomInstruments';
 import { useTheme } from '@/hooks/useTheme';
 import { useMaturityOverrides } from '@/hooks/useMaturityOverrides';
+import { useHolidays } from '@/hooks/useHolidays';
 import { daysUntil, calcLecap, calcCer, getSettlementDate } from '@/lib/calculations';
 import { Moon, Sun, ArrowLeft } from 'lucide-react';
 
@@ -40,6 +41,7 @@ function EraserIcon({ size = 12 }: { size?: number }) {
 export default function Commission() {
   const navigate = useNavigate();
   const { getEffectiveMaturity } = useMaturityOverrides();
+  const { holidayDatesSet } = useHolidays();
   const { theme, toggle: toggleTheme } = useTheme();
   const { custom } = useCustomInstruments();
 
@@ -95,7 +97,7 @@ export default function Commission() {
         const effectivePrice = hasManualPrice ? parsedManual : marketPrice;
         return { ...inst, maturityDate: maturity, marketPrice, effectivePrice, hasManualPrice };
       })
-      .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
+      .sort((a, b) => daysUntil(a.maturityDate, 1, holidayDatesSet) - daysUntil(b.maturityDate, 1, holidayDatesSet));
   }
 
   const lecapRows = enrich(allLecaps);
@@ -113,7 +115,7 @@ export default function Commission() {
   // LECAP commission row
   function lecapCalc(inst: typeof lecapRows[0]) {
     const price = inst.effectivePrice;
-    const days = daysUntil(inst.maturityDate);
+    const days = daysUntil(inst.maturityDate, 1, holidayDatesSet);
     const pago = inst.redemptionValue ?? 0;
     if (days <= 0 || price <= 0 || pago <= 0) return null;
 
@@ -138,11 +140,11 @@ export default function Commission() {
   // CER commission row
   function cerCalc(inst: typeof cerRows[0]) {
     const price = inst.effectivePrice;
-    const days = daysUntil(inst.maturityDate);
+    const days = daysUntil(inst.maturityDate, 1, holidayDatesSet);
     if (days <= 0 || price <= 0 || !inst.cerInicial || !effectiveCER) return null;
 
     const adjustedFace = 100 * effectiveCER / inst.cerInicial;
-    const settlement = getSettlementDate(1);
+    const settlement = getSettlementDate(1, holidayDatesSet);
     const [my, mm, md] = inst.maturityDate.split('-').map(Number);
     const matDate = new Date(my, mm - 1, md);
     const d360 = days360(settlement, matDate);
