@@ -31,7 +31,7 @@ interface CERProjectionRow {
 interface ProjectedRow {
   ticker: string;
   duration: number;
-  tna180Proj: number | null;
+  tnaProj: number | null;
 }
 
 // ─── Helpers ───
@@ -266,8 +266,8 @@ export function useProjectedCER() {
         const cerInicial = inst.cerInicial ?? null;
         if (!projectedCER || !cerInicial || inst.price <= 0) return null;
         const ratio = (100 * projectedCER / cerInicial) / inst.price;
-        const tna180 = inst.d360 > 0 ? (Math.pow(ratio, 180 / inst.d360) - 1) * 2 * 100 : 0;
-        return { ticker: inst.ticker, duration: inst.duration, yield: tna180 };
+        const tnaProj = inst.days > 0 ? (ratio - 1) * 365 / inst.days * 100 : 0;
+        return { ticker: inst.ticker, duration: inst.duration, yield: tnaProj };
       })
       .filter((r): r is ProjectedCurvePoint => r !== null);
   }, [cerRows, cerLookup]);
