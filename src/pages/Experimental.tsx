@@ -737,7 +737,7 @@ export default function Experimental() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
                     {[
                       { label: 'Ticker', value: auditData.row.ticker },
-                      { label: 'Precio', value: auditData.row.price > 0 ? `$${auditData.row.price.toFixed(2)}` : '—' },
+                      { label: 'Precio', value: auditData.row.price > 0 ? `$${auditData.row.price.toFixed(3)}` : '—' },
                       { label: 'Vencimiento', value: formatDateShort(auditData.row.matDate) },
                       { label: 'Fecha CER (T-10)', value: formatDateShort(auditData.row.cerRelevantDate) },
                       { label: 'Fecha CER tabla', value: formatDateISO(auditData.row.cerRelevantDate) },
