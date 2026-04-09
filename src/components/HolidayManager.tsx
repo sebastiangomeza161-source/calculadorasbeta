@@ -14,26 +14,43 @@ function parseDateInput(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
+  // ISO: YYYY-MM-DD
   let m = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (m) {
     const [, y, mo, d] = m;
-    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    return validateAndFormat(parseInt(y), parseInt(mo), parseInt(d));
   }
 
-  m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // Ambiguous: A/B/YYYY or A/B/YY — detect DD/MM vs MM/DD
+  m = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if (m) {
-    const [, d, mo, y] = m;
-    return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
+    const a = parseInt(m[1]);
+    const b = parseInt(m[2]);
+    let year = parseInt(m[3]);
+    if (year < 100) year += year < 50 ? 2000 : 1900;
 
-  m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
-  if (m) {
-    const [, d, mo, yy] = m;
-    const year = parseInt(yy) < 50 ? `20${yy}` : `19${yy}`;
-    return `${year}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    let day: number, month: number;
+    if (a > 12 && b <= 12) {
+      // a can't be month → DD/MM
+      day = a; month = b;
+    } else if (b > 12 && a <= 12) {
+      // b can't be month → MM/DD
+      day = b; month = a;
+    } else {
+      // Both ≤12: default DD/MM (Argentine convention)
+      day = a; month = b;
+    }
+    return validateAndFormat(year, month, day);
   }
 
   return null;
+}
+
+function validateAndFormat(year: number, month: number, day: number): string | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 export default function HolidayManager() {
