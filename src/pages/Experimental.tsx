@@ -534,7 +534,7 @@ export default function Experimental() {
           <div className="terminal-card overflow-hidden">
             <div className="px-4 py-2 border-b border-border/50">
               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
-                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+2) al 15/(M+3)
+                B · Inflación Mensual Esperada (editable) · Inflación mes M → CER del 16/(M+1) al 15/(M+2)
               </span>
             </div>
             <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
