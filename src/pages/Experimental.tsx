@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CER_INSTRUMENTS } from '@/data/instruments';
 import { useLivePrices } from '@/hooks/useLivePrices';
@@ -220,7 +220,21 @@ export default function Experimental() {
   const customTickers = custom.map(i => i.ticker);
   const { data: livePrices, isLoading } = useLivePrices(customTickers);
   const { data: cerData } = useCER();
-  const [inflation, setInflation] = useState<InflationEntry[]>(getDefaultInflation);
+  const [inflation, setInflation] = useState<InflationEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('experimental_inflation');
+      if (saved) {
+        const parsed = JSON.parse(saved) as InflationEntry[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return getDefaultInflation();
+  });
+
+  // Auto-save inflation to localStorage
+  useEffect(() => {
+    localStorage.setItem('experimental_inflation', JSON.stringify(inflation));
+  }, [inflation]);
 
   const allCer = useMemo(() => [...CER_INSTRUMENTS, ...custom.filter(i => i.type === 'CER')], [custom]);
   const lastOfficialCER = cerData?.latestCer ?? cerData?.cer ?? null;
