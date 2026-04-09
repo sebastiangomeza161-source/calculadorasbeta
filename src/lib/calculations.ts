@@ -7,22 +7,32 @@
 
 // --- Settlement ---
 
-export function getSettlementDate(tPlus: number = 1): Date {
+function dateToISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isBusinessDay(d: Date, holidaySet?: Set<string>): boolean {
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return false;
+  if (holidaySet && holidaySet.has(dateToISO(d))) return false;
+  return true;
+}
+
+export function getSettlementDate(tPlus: number = 1, holidaySet?: Set<string>): Date {
   const today = new Date();
   const settlement = new Date(today);
   let added = 0;
   while (added < tPlus) {
     settlement.setDate(settlement.getDate() + 1);
-    const dow = settlement.getDay();
-    if (dow !== 0 && dow !== 6) added++;
+    if (isBusinessDay(settlement, holidaySet)) added++;
   }
   return settlement;
 }
 
-export function daysUntil(maturityDate: string, tPlus: number = 1): number {
+export function daysUntil(maturityDate: string, tPlus: number = 1, holidaySet?: Set<string>): number {
   const [y, m, d] = maturityDate.split('-').map(Number);
   const target = new Date(y, m - 1, d);
-  const settlement = getSettlementDate(tPlus);
+  const settlement = getSettlementDate(tPlus, holidaySet);
   const diff = target.getTime() - settlement.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
