@@ -231,7 +231,9 @@ export default function ProjectedCurve({ curvePoints, inflation, lecapPoints = [
               </tr>
             </thead>
             <tbody>
-              {inflation.map((row, i) => (
+              {inflation
+                .filter(row => row.year < 2027 || (row.year === 2027 && row.month <= 7))
+                .map((row, i) => (
                 <tr key={`${row.year}-${row.month}`} className="border-b border-border/20">
                   <td className="py-1.5 px-3 font-mono text-xs text-muted-foreground">{row.label}</td>
                   <td className="py-1.5 px-3 font-mono text-xs text-right">{(row.rate * 100).toFixed(1)}%</td>
